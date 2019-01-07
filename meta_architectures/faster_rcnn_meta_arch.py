@@ -647,8 +647,10 @@ class FasterRCNNMetaArch(model.DetectionModel):
      image_shape) = self._extract_rpn_feature_maps(preprocessed_inputs)
     (rpn_box_encodings, rpn_objectness_predictions_with_background, box_pred_weights
     ) = self._predict_rpn_proposals(rpn_box_predictor_features)
-    box_pred_weights = box_pred_weights[0][:, 0]
-    (top_val, top_index) = tf.math.top_k(box_pred_weights, k=10)
+    (top_val_0, top_index_0) = tf.math.top_k(box_pred_weights[0][:, 0], k=10)
+    (top_val_1, top_index_1) = tf.math.top_k(box_pred_weights[0][:, 1], k=10)
+    (bottom_val_0, bottom_index_0) = -tf.math.top_k(-box_pred_weights[0][:, 0], k=10)
+    (bottom_val_1, bottom_index_1) = -tf.math.top_k(-box_pred_weights[0][:, 1], k=10)
     # The Faster R-CNN paper recommends pruning anchors that venture outside
     # the image window at training time and clipping at inference time.
     clip_window = tf.to_float(tf.stack([0, 0, image_shape[1], image_shape[2]]))
@@ -665,8 +667,10 @@ class FasterRCNNMetaArch(model.DetectionModel):
       anchors_boxlist = box_list_ops.clip_to_window(
           anchors_boxlist, clip_window,
           filter_nonoverlapping=not self._use_static_shapes)
-    out = tf.gather(rpn_box_predictor_features, top_index, axis=3)
-    print(out)
+    top_fm_0 = tf.gather(rpn_box_predictor_features, top_index_0, axis=3)
+    top_fm_1 = tf.gather(rpn_box_predictor_features, top_index_1, axis=3)
+    bottom_fm_0 = tf.gather(rpn_box_predictor_features, bottom_index_0, axis=3)
+    bottom_fm_1 = tf.gather(rpn_box_predictor_features, bottom_index_1, axis=3)
     self._anchors = anchors_boxlist
     prediction_dict = {
         'rpn_box_predictor_features': rpn_box_predictor_features,
@@ -676,7 +680,10 @@ class FasterRCNNMetaArch(model.DetectionModel):
         'rpn_objectness_predictions_with_background':
         rpn_objectness_predictions_with_background,
         'anchors': self._anchors.get(),
-        'inception_feature_map': out
+        'top_fm_0': top_fm_0,
+        'top_fm_1': top_fm_1,
+        'bottom_fm_0': bottom_fm_0,
+        'bottom_fm_1': bottom_fm_1
     }
 
     if self._number_of_stages >= 2:
@@ -1173,7 +1180,10 @@ class FasterRCNNMetaArch(model.DetectionModel):
             prediction_dict['class_predictions_with_background'],
             prediction_dict['proposal_boxes'],
             prediction_dict['num_proposals'],
-            prediction_dict['inception_feature_map'],
+            prediction_dict['top_fm_0'],
+            prediction_dict['top_fm_1'],
+            prediction_dict['bottom_fm_0'],
+            prediction_dict['bottom_fm_1'],
             true_image_shapes,
             mask_predictions=mask_predictions)
 

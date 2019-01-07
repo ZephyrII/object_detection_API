@@ -212,7 +212,6 @@ def add_output_tensor_nodes(postprocessed_tensors,
   keypoints = postprocessed_tensors.get(detection_fields.detection_keypoints)
   masks = postprocessed_tensors.get(detection_fields.detection_masks)
   num_detections = postprocessed_tensors.get(detection_fields.num_detections)
-  feature_map = postprocessed_tensors.get(detection_fields.feature_map)
   outputs = {}
   outputs[detection_fields.detection_boxes] = tf.identity(
       boxes, name=detection_fields.detection_boxes)
@@ -222,8 +221,14 @@ def add_output_tensor_nodes(postprocessed_tensors,
       classes, name=detection_fields.detection_classes)
   outputs[detection_fields.num_detections] = tf.identity(
       num_detections, name=detection_fields.num_detections)
-  outputs[detection_fields.inception_feature_map] = tf.identity(
-      inception_feature_map, name=detection_fields.inception_feature_map)
+  outputs['top_fm_0'] = tf.identity(
+      postprocessed_tensors.get('top_fm_0'), name='top_fm_0')
+  outputs['top_fm_1'] = tf.identity(
+      postprocessed_tensors.get('top_fm_1'), name='top_fm_1')
+  outputs['bottom_fm_0'] = tf.identity(
+      postprocessed_tensors.get('bottom_fm_0'), name='bottom_fm_0')
+  outputs['bottom_fm_1'] = tf.identity(
+      postprocessed_tensors.get('bottom_fm_1'), name='bottom_fm_1')
   if keypoints is not None:
     outputs[detection_fields.detection_keypoints] = tf.identity(
         keypoints, name=detection_fields.detection_keypoints)
