@@ -196,7 +196,7 @@ class ConvolutionalClassHead(head.Head):
     weights_reshaped = tf.reshape(weights, [512, -1, self._num_class_slots])
     weights_reshaped = tf.reduce_mean(weights_reshaped, axis=1)
 
-    tf.print(weights_reshaped[:, 0]) # TODO: extract weights
+    tf.summary.histogram(weights_reshaped[:, 0]) # TODO: extract weights
 
     if self._apply_sigmoid_to_scores:
       class_predictions_with_background = tf.sigmoid(
