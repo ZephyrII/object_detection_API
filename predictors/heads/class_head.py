@@ -89,7 +89,8 @@ class MaskRCNNClassHead(head.Head):
           flattened_roi_pooled_features,
           keep_prob=self._dropout_keep_prob,
           is_training=self._is_training)
-
+#    print('features shape: ')
+#    print(features.shape)
     with slim.arg_scope(self._fc_hyperparams_fn()):
       class_predictions_with_background = slim.fully_connected(
           flattened_roi_pooled_features,
@@ -189,6 +190,13 @@ class ConvolutionalClassHead(head.Head):
           scope='ClassPredictor',
           biases_initializer=tf.constant_initializer(
               self._class_prediction_bias_init))
+#    print([v.name for v in tf.all_variables()])
+    weights = [v for v in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES) if v.name.endswith('FirstStageBoxPredictor/ClassPredictor/weights:0')]
+    tf.summary.scalar('my_tens', net)
+#    tf.summary.scalar('heheszki1', tf.shape(class_predictions_with_background)[1])
+#    tf.summary.scalar('heheszki2', tf.shape(class_predictions_with_background)[2])
+
+
     if self._apply_sigmoid_to_scores:
       class_predictions_with_background = tf.sigmoid(
           class_predictions_with_background)

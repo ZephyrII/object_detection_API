@@ -787,7 +787,8 @@ class FasterRCNNMetaArch(model.DetectionModel):
         self._feature_extractor.extract_box_classifier_features(
             flattened_proposal_feature_maps,
             scope=self.second_stage_feature_extractor_scope))
-
+    print('box_classifier_features: ')
+    print(box_classifier_features.shape)
     if self._mask_rcnn_box_predictor.is_keras_model:
       box_predictions = self._mask_rcnn_box_predictor(
           [box_classifier_features],
@@ -976,10 +977,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
         self._feature_extractor.extract_proposal_features(
             preprocessed_inputs,
             scope=self.first_stage_feature_extractor_scope))
-    lol = tf.reduce_mean(rpn_features_to_crop,3, keepdims=True)
-    tf.summary.image("lol",rpn_features_to_crop[:,:,:,tf.newaxis, 0])
-    tf.summary.image("lol_img", preprocessed_inputs)
-    print(lol.shape)
+
     feature_map_shape = tf.shape(rpn_features_to_crop)
     anchors = box_list_ops.concatenate(
         self._first_stage_anchor_generator.generate([(feature_map_shape[1],
@@ -995,6 +993,8 @@ class FasterRCNNMetaArch(model.DetectionModel):
           activation_fn=tf.nn.relu6,
           scope='Conv',
           reuse=reuse)
+#    print('rpn_box_predictor_features shape: ')
+#    print(rpn_box_predictor_features.shape)
     return (rpn_box_predictor_features, rpn_features_to_crop,
             anchors, image_shape)
 
@@ -1174,7 +1174,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
             prediction_dict['class_predictions_with_background'],
             prediction_dict['proposal_boxes'],
             prediction_dict['num_proposals'],
-            prediction_dict['rpn_features_to_crop'],
+            prediction_dict['rpn_box_predictor_features'],
             true_image_shapes,
             mask_predictions=mask_predictions)
 
