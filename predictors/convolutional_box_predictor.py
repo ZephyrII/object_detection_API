@@ -120,7 +120,7 @@ class ConvolutionalBoxPredictor(box_predictor.BoxPredictor):
     predictions = {
         BOX_ENCODINGS: [],
         CLASS_PREDICTIONS_WITH_BACKGROUND: [],
-        weights: [],
+        'box_pred_weights': [],
     }
     for head_name in self._other_heads.keys():
       predictions[head_name] = []
@@ -166,7 +166,8 @@ class ConvolutionalBoxPredictor(box_predictor.BoxPredictor):
                     features=net,
                     num_predictions_per_location=num_predictions_per_location)
                 predictions[head_name].append(prediction[0])
-                predictions['weights'].append(prediction[1])
+                predictions['box_pred_weights'].append(prediction[1])
+                continue
               else:
                 head_obj = self._other_heads[head_name]
               prediction = head_obj.predict(
