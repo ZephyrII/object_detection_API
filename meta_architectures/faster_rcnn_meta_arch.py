@@ -645,9 +645,9 @@ class FasterRCNNMetaArch(model.DetectionModel):
     """
     (rpn_box_predictor_features, rpn_features_to_crop, anchors_boxlist,
      image_shape) = self._extract_rpn_feature_maps(preprocessed_inputs)
-    (rpn_box_encodings, rpn_objectness_predictions_with_background
+    (rpn_box_encodings, rpn_objectness_predictions_with_background, weights
     ) = self._predict_rpn_proposals(rpn_box_predictor_features)
-
+    top_index = tf.math.top_k(weights[:, 0], k=10)
     # The Faster R-CNN paper recommends pruning anchors that venture outside
     # the image window at training time and clipping at inference time.
     clip_window = tf.to_float(tf.stack([0, 0, image_shape[1], image_shape[2]]))
@@ -674,7 +674,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
         'rpn_objectness_predictions_with_background':
         rpn_objectness_predictions_with_background,
         'anchors': self._anchors.get(),
-        'inception_feature_map': rpn_box_predictor_features
+        'inception_feature_map': rpn_box_predictor_features[:, :, :, top_index]
     }
 
     if self._number_of_stages >= 2:
@@ -1039,7 +1039,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
         box_predictions[box_predictor.CLASS_PREDICTIONS_WITH_BACKGROUND],
         axis=1)
     return (tf.squeeze(box_encodings, axis=2),
-            objectness_predictions_with_background)
+            objectness_predictions_with_background, box_predictions['weights'])
 
   def _remove_invalid_anchors_and_predictions(
       self,

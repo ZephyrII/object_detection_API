@@ -161,6 +161,11 @@ class ConvolutionalBoxPredictor(box_predictor.BoxPredictor):
                 head_obj = self._box_prediction_head
               elif head_name == CLASS_PREDICTIONS_WITH_BACKGROUND:
                 head_obj = self._class_prediction_head
+                prediction = head_obj.predict(
+                    features=net,
+                    num_predictions_per_location=num_predictions_per_location)
+                predictions[head_name].append(prediction[0])
+                predictions['weights'].append(prediction[1])
               else:
                 head_obj = self._other_heads[head_name]
               prediction = head_obj.predict(
