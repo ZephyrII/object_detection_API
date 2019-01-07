@@ -125,7 +125,7 @@ class DetectionResultFields(object):
   detection_boundaries = 'detection_boundaries'
   detection_keypoints = 'detection_keypoints'
   num_detections = 'num_detections'
-  feature_map = 'feature_map'
+  inception_feature_map = 'inception_feature_map'
 
 
 class BoxListFields(object):

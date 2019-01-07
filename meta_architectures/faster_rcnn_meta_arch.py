@@ -648,6 +648,8 @@ class FasterRCNNMetaArch(model.DetectionModel):
     (rpn_box_encodings, rpn_objectness_predictions_with_background
     ) = self._predict_rpn_proposals(rpn_box_predictor_features)
 
+    tf.summary.scalar('rpn_box_predictor_features', rpn_box_predictor_features)
+
     # The Faster R-CNN paper recommends pruning anchors that venture outside
     # the image window at training time and clipping at inference time.
     clip_window = tf.to_float(tf.stack([0, 0, image_shape[1], image_shape[2]]))
@@ -673,7 +675,8 @@ class FasterRCNNMetaArch(model.DetectionModel):
         'rpn_box_encodings': rpn_box_encodings,
         'rpn_objectness_predictions_with_background':
         rpn_objectness_predictions_with_background,
-        'anchors': self._anchors.get()
+        'anchors': self._anchors.get(),
+        'inception_feature_map': rpn_box_predictor_features
     }
 
     if self._number_of_stages >= 2:
@@ -787,8 +790,6 @@ class FasterRCNNMetaArch(model.DetectionModel):
         self._feature_extractor.extract_box_classifier_features(
             flattened_proposal_feature_maps,
             scope=self.second_stage_feature_extractor_scope))
-    print('box_classifier_features: ')
-    print(box_classifier_features.shape)
     if self._mask_rcnn_box_predictor.is_keras_model:
       box_predictions = self._mask_rcnn_box_predictor(
           [box_classifier_features],
@@ -993,8 +994,6 @@ class FasterRCNNMetaArch(model.DetectionModel):
           activation_fn=tf.nn.relu6,
           scope='Conv',
           reuse=reuse)
-#    print('rpn_box_predictor_features shape: ')
-#    print(rpn_box_predictor_features.shape)
     return (rpn_box_predictor_features, rpn_features_to_crop,
             anchors, image_shape)
 
@@ -1175,6 +1174,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
             prediction_dict['proposal_boxes'],
             prediction_dict['num_proposals'],
             prediction_dict['rpn_box_predictor_features'],
+            prediction_dict['inception_feature_map'],
             true_image_shapes,
             mask_predictions=mask_predictions)
 

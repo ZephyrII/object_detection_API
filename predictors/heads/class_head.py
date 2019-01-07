@@ -190,11 +190,10 @@ class ConvolutionalClassHead(head.Head):
           scope='ClassPredictor',
           biases_initializer=tf.constant_initializer(
               self._class_prediction_bias_init))
-#    print([v.name for v in tf.all_variables()])
+
+
     weights = [v for v in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES) if v.name.endswith('FirstStageBoxPredictor/ClassPredictor/weights:0')]
-    tf.summary.scalar('my_tens', net)
-#    tf.summary.scalar('heheszki1', tf.shape(class_predictions_with_background)[1])
-#    tf.summary.scalar('heheszki2', tf.shape(class_predictions_with_background)[2])
+    tf.summary.tensor_summary('my_tens', weights) # TODO: extract weights
 
 
     if self._apply_sigmoid_to_scores:

@@ -222,8 +222,8 @@ def add_output_tensor_nodes(postprocessed_tensors,
       classes, name=detection_fields.detection_classes)
   outputs[detection_fields.num_detections] = tf.identity(
       num_detections, name=detection_fields.num_detections)
-  outputs[detection_fields.feature_map] = tf.identity(
-      feature_map, name=detection_fields.feature_map)
+  outputs[detection_fields.inception_feature_map] = tf.identity(
+      inception_feature_map, name=detection_fields.inception_feature_map)
   if keypoints is not None:
     outputs[detection_fields.detection_keypoints] = tf.identity(
         keypoints, name=detection_fields.detection_keypoints)
