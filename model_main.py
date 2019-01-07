@@ -57,7 +57,6 @@ FLAGS = flags.FLAGS
 
 
 def main(unused_argv):
-  tf.enable_eager_execution()
   flags.mark_flag_as_required('model_dir')
   flags.mark_flag_as_required('pipeline_config_path')
   config = tf.estimator.RunConfig(model_dir=FLAGS.model_dir)
