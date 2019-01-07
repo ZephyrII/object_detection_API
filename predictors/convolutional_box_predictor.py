@@ -120,6 +120,7 @@ class ConvolutionalBoxPredictor(box_predictor.BoxPredictor):
     predictions = {
         BOX_ENCODINGS: [],
         CLASS_PREDICTIONS_WITH_BACKGROUND: [],
+        weights: [],
     }
     for head_name in self._other_heads.keys():
       predictions[head_name] = []
