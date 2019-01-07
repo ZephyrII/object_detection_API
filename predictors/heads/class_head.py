@@ -195,9 +195,8 @@ class ConvolutionalClassHead(head.Head):
     weights = [v for v in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES) if v.name.endswith('FirstStageBoxPredictor/ClassPredictor/weights:0')]
     weights_reshaped = tf.reshape(weights, [512, -1, self._num_class_slots])
     weights_reshaped = tf.reduce_mean(weights_reshaped, axis=1)
-    tf.enable_eager_execution()
-    tf.print(weights_reshaped[0]) # TODO: extract weights
-    tf.print(weights_reshaped[1]) # TODO: extract weights
+
+    tf.summary.scalar(weights_reshaped[0]) # TODO: extract weights
 
     if self._apply_sigmoid_to_scores:
       class_predictions_with_background = tf.sigmoid(
