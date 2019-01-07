@@ -193,8 +193,8 @@ class ConvolutionalClassHead(head.Head):
 
 
     weights = [v for v in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES) if v.name.endswith('FirstStageBoxPredictor/ClassPredictor/weights:0')]
-    tf.summary.tensor_summary('my_tens', weights) # TODO: extract weights
-
+    weights_reshaped = tf.reshape(weights, [512, -1, self._num_class_slots])
+    tf.summary.tensor_summary('my_tens', weights_reshaped) # TODO: extract weights
 
     if self._apply_sigmoid_to_scores:
       class_predictions_with_background = tf.sigmoid(
@@ -202,6 +202,9 @@ class ConvolutionalClassHead(head.Head):
     batch_size = features.get_shape().as_list()[0]
     if batch_size is None:
       batch_size = tf.shape(features)[0]
+
+
+
     class_predictions_with_background = tf.reshape(
         class_predictions_with_background,
         [batch_size, -1, self._num_class_slots])

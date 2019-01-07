@@ -648,8 +648,6 @@ class FasterRCNNMetaArch(model.DetectionModel):
     (rpn_box_encodings, rpn_objectness_predictions_with_background
     ) = self._predict_rpn_proposals(rpn_box_predictor_features)
 
-    tf.summary.scalar('rpn_box_predictor_features', rpn_box_predictor_features)
-
     # The Faster R-CNN paper recommends pruning anchors that venture outside
     # the image window at training time and clipping at inference time.
     clip_window = tf.to_float(tf.stack([0, 0, image_shape[1], image_shape[2]]))
@@ -1173,7 +1171,6 @@ class FasterRCNNMetaArch(model.DetectionModel):
             prediction_dict['class_predictions_with_background'],
             prediction_dict['proposal_boxes'],
             prediction_dict['num_proposals'],
-            prediction_dict['rpn_box_predictor_features'],
             prediction_dict['inception_feature_map'],
             true_image_shapes,
             mask_predictions=mask_predictions)
