@@ -194,7 +194,7 @@ class ConvolutionalClassHead(head.Head):
 
     weights = [v for v in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES) if v.name.endswith('FirstStageBoxPredictor/ClassPredictor/weights:0')]
     weights_reshaped = tf.reshape(weights, [512, -1, self._num_class_slots])
-    weights_reshaped = tf.reduce_mean(weights_reshaped, axis=1)
+    weights_reshaped = tf.reduce_max(weights_reshaped, axis=1)
 
     #tf.summary.histogram(weights_reshaped[:, 0]) # TODO: extract weights
 
