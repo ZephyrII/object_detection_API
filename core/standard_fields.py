@@ -125,7 +125,8 @@ class DetectionResultFields(object):
   detection_boundaries = 'detection_boundaries'
   detection_keypoints = 'detection_keypoints'
   num_detections = 'num_detections'
-  inception_feature_map = 'inception_feature_map'
+  rpn_box_predictor_features = 'rpn_box_predictor_features'
+  class_predictor_weights = 'class_predictor_weights'
 
 
 class BoxListFields(object):

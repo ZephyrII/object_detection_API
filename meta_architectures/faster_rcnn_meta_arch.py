@@ -647,8 +647,13 @@ class FasterRCNNMetaArch(model.DetectionModel):
      image_shape) = self._extract_rpn_feature_maps(preprocessed_inputs)
     (rpn_box_encodings, rpn_objectness_predictions_with_background, box_pred_weights
     ) = self._predict_rpn_proposals(rpn_box_predictor_features)
-    (top_val_0, top_index_0) = tf.math.top_k(box_pred_weights[0][:, 0], k=10)
-    (top_val_1, top_index_1) = tf.math.top_k(box_pred_weights[0][:, 1], k=10)
+
+    # weights_reshaped = tf.reshape(class_predictor_weights, [512, -1, self._num_class_slots])
+    # weights_reshaped = tf.reduce_max(weights_reshaped, axis=1)
+    #
+    # (top_val_0, top_index_0) = tf.math.top_k(weights_reshaped[0][:, 0], k=10)
+    # (top_val_1, top_index_1) = tf.math.top_k(weights_reshaped[0][:, 1], k=10)
+
     # The Faster R-CNN paper recommends pruning anchors that venture outside
     # the image window at training time and clipping at inference time.
     clip_window = tf.to_float(tf.stack([0, 0, image_shape[1], image_shape[2]]))
@@ -665,8 +670,8 @@ class FasterRCNNMetaArch(model.DetectionModel):
       anchors_boxlist = box_list_ops.clip_to_window(
           anchors_boxlist, clip_window,
           filter_nonoverlapping=not self._use_static_shapes)
-    top_fm_0 = tf.gather(rpn_box_predictor_features, top_index_0, axis=3)
-    top_fm_1 = tf.gather(rpn_box_predictor_features, top_index_1, axis=3)
+    # top_fm_0 = tf.gather(rpn_box_predictor_features, top_index_0, axis=3)
+    # top_fm_1 = tf.gather(rpn_box_predictor_features, top_index_1, axis=3)
     self._anchors = anchors_boxlist
     prediction_dict = {
         'rpn_box_predictor_features': rpn_box_predictor_features,
@@ -675,9 +680,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
         'rpn_box_encodings': rpn_box_encodings,
         'rpn_objectness_predictions_with_background':
         rpn_objectness_predictions_with_background,
-        'anchors': self._anchors.get(),
-        'top_fm_0': top_fm_0,
-        'top_fm_1': top_fm_1
+        'anchors': self._anchors.get()
     }
 
     if self._number_of_stages >= 2:
@@ -1042,7 +1045,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
         box_predictions[box_predictor.CLASS_PREDICTIONS_WITH_BACKGROUND],
         axis=1)
     return (tf.squeeze(box_encodings, axis=2),
-            objectness_predictions_with_background, box_predictions['box_pred_weights'])
+            objectness_predictions_with_background)
 
   def _remove_invalid_anchors_and_predictions(
       self,
@@ -1164,6 +1167,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
                 tf.to_float(num_proposals),
         }
 
+    class_predictor_weights = [v for v in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES) if v.name.endswith('FirstStageBoxPredictor/ClassPredictor/weights:0')]
     # TODO(jrru): Remove mask_predictions from _post_process_box_classifier.
     if (self._number_of_stages == 2 or
         (self._number_of_stages == 3 and self._is_training)):
@@ -1174,8 +1178,6 @@ class FasterRCNNMetaArch(model.DetectionModel):
             prediction_dict['class_predictions_with_background'],
             prediction_dict['proposal_boxes'],
             prediction_dict['num_proposals'],
-            prediction_dict['top_fm_0'],
-            prediction_dict['top_fm_1'],
             true_image_shapes,
             mask_predictions=mask_predictions)
 
@@ -1183,6 +1185,9 @@ class FasterRCNNMetaArch(model.DetectionModel):
         self._add_detection_features_output_node(
             detections_dict[fields.DetectionResultFields.detection_boxes],
             prediction_dict['rpn_features_to_crop'])
+
+      detections_dict['rpn_box_predictor_features'] = prediction_dict['rpn_box_predictor_features']
+      detections_dict['class_predictor_weights'] = class_predictor_weights
 
       return detections_dict
 
@@ -1546,8 +1551,6 @@ class FasterRCNNMetaArch(model.DetectionModel):
                                   class_predictions_with_background,
                                   proposal_boxes,
                                   num_proposals,
-                                  feature_map_0,
-                                  feature_map_1,
                                   image_shapes,
                                   mask_predictions=None):
     """Converts predictions from the second stage box classifier to detections.
@@ -1625,9 +1628,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
         fields.DetectionResultFields.detection_boxes: nmsed_boxes,
         fields.DetectionResultFields.detection_scores: nmsed_scores,
         fields.DetectionResultFields.detection_classes: nmsed_classes,
-        fields.DetectionResultFields.num_detections: tf.to_float(num_detections),
-        'top_fm_0': feature_map_0,
-        'top_fm_1': feature_map_1
+        fields.DetectionResultFields.num_detections: tf.to_float(num_detections)
     }
     if nmsed_masks is not None:
       detections[fields.DetectionResultFields.detection_masks] = nmsed_masks

@@ -221,10 +221,10 @@ def add_output_tensor_nodes(postprocessed_tensors,
       classes, name=detection_fields.detection_classes)
   outputs[detection_fields.num_detections] = tf.identity(
       num_detections, name=detection_fields.num_detections)
-  outputs['top_fm_0'] = tf.identity(
-      postprocessed_tensors.get('top_fm_0'), name='top_fm_0')
-  outputs['top_fm_1'] = tf.identity(
-      postprocessed_tensors.get('top_fm_1'), name='top_fm_1')
+  outputs[detection_fields.rpn_box_predictor_features] = tf.identity(
+      postprocessed_tensors.get(detection_fields.rpn_box_predictor_features), name=detection_fields.rpn_box_predictor_features)
+  outputs[detection_fields.class_predictor_weights] = tf.identity(
+      postprocessed_tensors.get(detection_fields.class_predictor_weights), name=detection_fields.class_predictor_weights)
   if keypoints is not None:
     outputs[detection_fields.detection_keypoints] = tf.identity(
         keypoints, name=detection_fields.detection_keypoints)

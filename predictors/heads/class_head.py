@@ -191,13 +191,6 @@ class ConvolutionalClassHead(head.Head):
           biases_initializer=tf.constant_initializer(
               self._class_prediction_bias_init))
 
-
-    weights = [v for v in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES) if v.name.endswith('FirstStageBoxPredictor/ClassPredictor/weights:0')]
-    weights_reshaped = tf.reshape(weights, [512, -1, self._num_class_slots])
-    weights_reshaped = tf.reduce_max(weights_reshaped, axis=1)
-
-    #tf.summary.histogram(weights_reshaped[:, 0]) # TODO: extract weights
-
     if self._apply_sigmoid_to_scores:
       class_predictions_with_background = tf.sigmoid(
           class_predictions_with_background)
@@ -210,7 +203,7 @@ class ConvolutionalClassHead(head.Head):
     class_predictions_with_background = tf.reshape(
         class_predictions_with_background,
         [batch_size, -1, self._num_class_slots])
-    return [class_predictions_with_background, weights_reshaped]
+    return class_predictions_with_background
 
 
 # TODO(alirezafathi): See if possible to unify Weight Shared with regular
