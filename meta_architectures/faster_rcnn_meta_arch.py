@@ -645,7 +645,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
     """
     (rpn_box_predictor_features, rpn_features_to_crop, anchors_boxlist,
      image_shape) = self._extract_rpn_feature_maps(preprocessed_inputs)
-    (rpn_box_encodings, rpn_objectness_predictions_with_background, box_pred_weights
+    (rpn_box_encodings, rpn_objectness_predictions_with_background
     ) = self._predict_rpn_proposals(rpn_box_predictor_features)
 
     # weights_reshaped = tf.reshape(class_predictor_weights, [512, -1, self._num_class_slots])
