@@ -647,6 +647,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
      image_shape) = self._extract_rpn_feature_maps(preprocessed_inputs)
     (rpn_box_encodings, rpn_objectness_predictions_with_background
     ) = self._predict_rpn_proposals(rpn_box_predictor_features)
+    
 
     # weights_reshaped = tf.reshape(class_predictor_weights, [512, -1, self._num_class_slots])
     # weights_reshaped = tf.reduce_max(weights_reshaped, axis=1)
@@ -680,7 +681,8 @@ class FasterRCNNMetaArch(model.DetectionModel):
         'rpn_box_encodings': rpn_box_encodings,
         'rpn_objectness_predictions_with_background':
         rpn_objectness_predictions_with_background,
-        'anchors': self._anchors.get()
+        'anchors': self._anchors.get(),
+        'preprocessed_inputs': preprocessed_inputs
     }
 
     if self._number_of_stages >= 2:
@@ -697,7 +699,6 @@ class FasterRCNNMetaArch(model.DetectionModel):
     if self._number_of_stages == 3:
       prediction_dict = self._predict_third_stage(
           prediction_dict, true_image_shapes)
-
     return prediction_dict
 
   def _image_batch_shape_2d(self, image_batch_shape_1d):
@@ -1166,7 +1167,6 @@ class FasterRCNNMetaArch(model.DetectionModel):
             fields.DetectionResultFields.num_detections:
                 tf.to_float(num_proposals),
         }
-
     class_predictor_weights = [v for v in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES) if v.name.endswith('FirstStageBoxPredictor/ClassPredictor/weights:0')]
     # TODO(jrru): Remove mask_predictions from _post_process_box_classifier.
     if (self._number_of_stages == 2 or
@@ -1187,7 +1187,8 @@ class FasterRCNNMetaArch(model.DetectionModel):
             prediction_dict['rpn_features_to_crop'])
 
       detections_dict['rpn_box_predictor_features'] = prediction_dict['rpn_box_predictor_features']
-      detections_dict['class_predictor_weights'] = class_predictor_weights
+      detections_dict['class_predictor_weights'] = tf.identity(class_predictor_weights)
+      detections_dict['preprocessed_inputs'] = prediction_dict['preprocessed_inputs']
 
       return detections_dict
 

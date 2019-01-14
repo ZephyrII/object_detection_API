@@ -225,6 +225,8 @@ def add_output_tensor_nodes(postprocessed_tensors,
       postprocessed_tensors.get(detection_fields.rpn_box_predictor_features), name=detection_fields.rpn_box_predictor_features)
   outputs[detection_fields.class_predictor_weights] = tf.identity(
       postprocessed_tensors.get(detection_fields.class_predictor_weights), name=detection_fields.class_predictor_weights)
+  outputs['preprocessed_inputs'] = tf.identity(
+      postprocessed_tensors.get('preprocessed_inputs'), name='preprocessed_inputs')
   if keypoints is not None:
     outputs[detection_fields.detection_keypoints] = tf.identity(
         keypoints, name=detection_fields.detection_keypoints)
