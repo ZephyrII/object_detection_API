@@ -44,7 +44,7 @@ flags.DEFINE_string('set', 'train', 'Convert training set, validation set or '
                                     'merged set.')
 flags.DEFINE_string('annotations_dir', 'Annotations',
                     '(Relative) path to annotations directory.')
-flags.DEFINE_string('samples_per_file', '100',
+flags.DEFINE_string('samples_per_file', '200',
                     'Samples per tfrecord file')
 flags.DEFINE_string('output_path', '', 'Path to output TFRecord')
 flags.DEFINE_string('label_map_path', 'data/pascal_label_map.pbtxt',
@@ -135,14 +135,11 @@ def dict_to_tf_example(img_fname,
                 classes.append(label_map_dict[obj['name']])
                 truncated.append(int(obj['truncated']))
                 poses.append(obj['pose'].encode('utf8'))
-
         example = tf.train.Example(features=tf.train.Features(feature={
             'image/height': dataset_util.int64_feature(height),
             'image/width': dataset_util.int64_feature(width),
-            'image/filename': dataset_util.bytes_feature(
-                data['filename'].encode('utf8')),
-            'image/source_id': dataset_util.bytes_feature(
-                data['filename'].encode('utf8')),
+            'image/filename': dataset_util.bytes_feature( data['filename'].encode('utf8')),
+            'image/source_id': dataset_util.bytes_feature(data['filename'].encode('utf8')),
             'image/key/sha256': dataset_util.bytes_feature(key.encode('utf8')),
             'image/encoded': dataset_util.bytes_feature(encoded_jpg),
             'image/format': dataset_util.bytes_feature('jpeg'.encode('utf8')),
