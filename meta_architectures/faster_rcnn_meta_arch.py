@@ -1169,10 +1169,13 @@ class FasterRCNNMetaArch(model.DetectionModel):
                     fields.DetectionResultFields.num_detections:
                         tf.to_float(num_proposals),
                 }
+
         class_predictor_weights = [v for v in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES) if
                                    v.name.endswith('FirstStageBoxPredictor/ClassPredictor/weights:0')]
         ss_class_predictor_weights = [v for v in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES) if
                                       v.name.endswith('SecondStageBoxPredictor/ClassPredictor/weights:0')]
+        prediction_dict['class_predictor_weights'] = tf.identity(class_predictor_weights)
+        prediction_dict['ss_class_predictor_weights'] = tf.identity(ss_class_predictor_weights)
         # TODO(jrru): Remove mask_predictions from _post_process_box_classifier.
         if (self._number_of_stages == 2 or
                 (self._number_of_stages == 3 and self._is_training)):
