@@ -131,7 +131,7 @@ class TfExampleDecoder(data_decoder.DataDecoder):
                use_display_name=False,
                dct_method='',
                num_keypoints=0,
-               num_additional_channels=0):
+               num_additional_channels=1):
     """Constructor sets keys_to_features and items_to_handlers.
 
     Args:

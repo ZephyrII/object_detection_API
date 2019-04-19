@@ -25,6 +25,7 @@ import PIL.Image
 import cv2
 import numpy as np
 import tensorflow as tf
+import xml.etree.ElementTree as ET
 
 from object_detection.utils import dataset_util
 from object_detection.utils import label_map_util
@@ -34,7 +35,7 @@ flags.DEFINE_string('data_dir', '', 'Root directory to raw PASCAL VOC dataset.')
 flags.DEFINE_string('set', 'train', 'Convert training set, validation set or '
                                     'merged set.')
 
-flags.DEFINE_string('samples_per_file', '200',
+flags.DEFINE_string('samples_per_file', '100',
                     'Samples per tfrecord file')
 flags.DEFINE_string('output_path', '', 'Path to output TFRecord')
 flags.DEFINE_string('label_map_path', 'data/pascal_label_map.pbtxt',
@@ -42,7 +43,7 @@ flags.DEFINE_string('label_map_path', 'data/pascal_label_map.pbtxt',
 FLAGS = flags.FLAGS
 
 
-def dict_to_tf_example(img_fname, label_fname, class_name):
+def dict_to_tf_example(xml_data, img_fname, label_fname, class_name):
 
     with tf.gfile.GFile(img_fname, 'rb') as fid:
         encoded_jpg = fid.read()
@@ -68,19 +69,40 @@ def dict_to_tf_example(img_fname, label_fname, class_name):
         'image/shape': dataset_util.int64_list_feature([height, width, 3]),
     }
     if mask_coords.shape[0] > 0:
+
+        obj = xml_data.find('object')
+        # xmin = []
+        # ymin = []
+        # xmax = []
+        # ymax = []
+        # xmin.append(float(obj.find('bndbox').find('xmin').text))
+        # ymin.append(float(obj.find('bndbox').find('ymin').text))
+        # xmax.append(float(obj.find('bndbox').find('xmax').text))
+        # ymax.append(float(obj.find('bndbox').find('ymax').text))
         rel_xmin = np.min(mask_coords[:, 1])
         rel_ymin = np.min(mask_coords[:, 0])
         rel_xmax = np.max(mask_coords[:, 1])
         rel_ymax = np.max(mask_coords[:, 0])
-        xmin = [rel_xmin / width]
-        ymin = [rel_ymin / height]
-        xmax = [rel_xmax / width]
-        ymax = [rel_ymax / height]
+        xmin = [rel_xmin/width]
+        ymin = [rel_ymin/height]
+        xmax = [rel_xmax/width]
+        ymax = [rel_ymax/height]
+
+
+        keypoints_x = []
+        keypoints_y = []
+        for kp_xml in obj.find('keypoints').findall('keypoint'):
+            keypoints_x.append(float(kp_xml.find('x').text)/width)
+            keypoints_y.append(float(kp_xml.find('y').text)/height)
+        print(keypoints_x, keypoints_y)
 
         classes = []
         classes_text = [class_name.encode('utf8')]
         classes.append(1)
 
+        feature_dict['image/object/keypoint/x'] = dataset_util.float_list_feature(keypoints_x)
+        feature_dict['image/object/keypoint/y'] = dataset_util.float_list_feature(keypoints_y)
+        feature_dict['image/object/bbox/xmin'] = dataset_util.float_list_feature(xmin)
         feature_dict['image/object/bbox/xmin'] = dataset_util.float_list_feature(xmin)
         feature_dict['image/object/bbox/xmax'] = dataset_util.float_list_feature(xmax)
         feature_dict['image/object/bbox/ymin'] = dataset_util.float_list_feature(ymin)
@@ -114,6 +136,7 @@ def main(_):
 
     im_path = os.path.join(data_dir, "images")
     labels_path = os.path.join(data_dir, "labels")
+    annotations_path = os.path.join(data_dir, "annotations")
     idx = 0
     tf_idx = 0
     file_list = os.listdir(im_path)
@@ -127,7 +150,15 @@ def main(_):
             fname = file_list[idx]
             img_full_path = os.path.join(im_path, fname)
             label_full_path = os.path.join(labels_path, fname[:-4] + '_label' + fname[-4:])
-            tf_example = dict_to_tf_example(img_full_path, label_full_path, 'charger')
+            annotations_full_path = os.path.join(annotations_path, fname[:-4] + '.txt')
+            xml_data = None
+            try:
+                tree = ET.parse(annotations_full_path)
+                xml_data = tree.getroot()
+            except:
+                print("No annotation file. Adding negatve sample")
+
+            tf_example = dict_to_tf_example(xml_data, img_full_path, label_full_path, 'charger')
             writer.write(tf_example.SerializeToString())
             idx += 1
             j += 1

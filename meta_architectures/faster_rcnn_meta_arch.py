@@ -100,6 +100,7 @@ from object_detection.anchor_generators import grid_anchor_generator
 from object_detection.builders import box_predictor_builder
 from object_detection.core import box_list
 from object_detection.core import box_list_ops
+from object_detection.core import keypoint_ops
 from object_detection.core import box_predictor
 from object_detection.core import losses
 from object_detection.core import model
@@ -698,6 +699,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
         if self._number_of_stages == 3:
             prediction_dict = self._predict_third_stage(
                 prediction_dict, true_image_shapes)
+
         return prediction_dict
 
     def _image_batch_shape_2d(self, image_batch_shape_1d):
@@ -874,17 +876,19 @@ class FasterRCNNMetaArch(model.DetectionModel):
             curr_box_classifier_features = prediction_dict['box_classifier_features']
             detection_classes = prediction_dict['class_predictions_with_background']
             if self._mask_rcnn_box_predictor.is_keras_model:
-                mask_predictions = self._mask_rcnn_box_predictor(
+                mask_and_key_predictions = self._mask_rcnn_box_predictor(
                     [curr_box_classifier_features],
                     prediction_stage=3)
             else:
-                mask_predictions = self._mask_rcnn_box_predictor.predict(
+                mask_and_key_predictions = self._mask_rcnn_box_predictor.predict(
                     [curr_box_classifier_features],
                     num_predictions_per_location=[1],
                     scope=self.second_stage_box_predictor_scope,
                     prediction_stage=3)
-            prediction_dict['mask_predictions'] = tf.squeeze(mask_predictions[
+            prediction_dict['mask_predictions'] = tf.squeeze(mask_and_key_predictions[
                                                                  box_predictor.MASK_PREDICTIONS], axis=1)
+            prediction_dict[box_predictor.KEYPOINTS_PREDICTIONS] = tf.squeeze(mask_and_key_predictions[
+                                                                 box_predictor.KEYPOINTS_PREDICTIONS], axis=1)
         else:
             detections_dict = self._postprocess_box_classifier(
                 prediction_dict['refined_box_encodings'],
@@ -909,18 +913,21 @@ class FasterRCNNMetaArch(model.DetectionModel):
                     scope=self.second_stage_feature_extractor_scope))
 
             if self._mask_rcnn_box_predictor.is_keras_model:
-                mask_predictions = self._mask_rcnn_box_predictor(
+                mask_and_key_predictions = self._mask_rcnn_box_predictor(
                     [curr_box_classifier_features],
                     prediction_stage=3)
             else:
-                mask_predictions = self._mask_rcnn_box_predictor.predict(
+                mask_and_key_predictions = self._mask_rcnn_box_predictor.predict(
                     [curr_box_classifier_features],
                     num_predictions_per_location=[1],
                     scope=self.second_stage_box_predictor_scope,
                     prediction_stage=3)
 
-            detection_masks = tf.squeeze(mask_predictions[
+            detection_masks = tf.squeeze(mask_and_key_predictions[
                                              box_predictor.MASK_PREDICTIONS], axis=1)
+
+            prediction_dict[box_predictor.KEYPOINTS_PREDICTIONS] = tf.squeeze(mask_and_key_predictions[
+                                                                 box_predictor.KEYPOINTS_PREDICTIONS], axis=1)
 
             _, num_classes, mask_height, mask_width = (
                 detection_masks.get_shape().as_list())
@@ -1209,12 +1216,16 @@ class FasterRCNNMetaArch(model.DetectionModel):
                                                                                 prediction_dict['proposal_boxes'])
             detections_dict['class_predictions_with_background'] = prediction_dict['class_predictions_with_background']
             detections_dict['box_classifier_features'] = prediction_dict['box_classifier_features']
+            print(prediction_dict[box_predictor.KEYPOINTS_PREDICTIONS])
+            detections_dict['detection_keypoints'] = prediction_dict[box_predictor.KEYPOINTS_PREDICTIONS]
 
             return detections_dict
 
         if self._number_of_stages == 3:
             # Post processing is already performed in 3rd stage. We need to transfer
             # postprocessed tensors from `prediction_dict` to `detections_dict`.
+            prediction_dict['detection_keypoints'] = prediction_dict[box_predictor.KEYPOINTS_PREDICTIONS]
+            del prediction_dict[box_predictor.KEYPOINTS_PREDICTIONS]
             return prediction_dict
 
     def _add_detection_features_output_node(self, detection_boxes,
@@ -1446,13 +1457,18 @@ class FasterRCNNMetaArch(model.DetectionModel):
             shape [num_boxes, image_height, image_width] containing instance masks.
             This is set to None if no masks exist in the provided groundtruth.
         """
-        groundtruth_boxlists = [
-            box_list_ops.to_absolute_coordinates(
-                box_list.BoxList(boxes), true_image_shapes[i, 0],
-                true_image_shapes[i, 1])
-            for i, boxes in enumerate(
-                self.groundtruth_lists(fields.BoxListFields.boxes))
-        ]
+        # gt_boxlist = (box_list_ops.to_absolute_coordinates(box_list.BoxList(boxes), true_image_shapes[i, 0],true_image_shapes[i, 1])
+        #             for i, boxes in enumerate(self.groundtruth_lists(fields.BoxListFields.boxes)))
+        # gt_boxlist = (box_list.BoxList(boxes).add_field(fields.BoxListFields.keypoints, self.groundtruth_lists(fields.BoxListFields.keypoints))
+        #             for i, boxes in enumerate(self.groundtruth_lists(fields.BoxListFields.boxes)))
+
+        groundtruth_boxlists = []
+        for i, boxes in enumerate(self.groundtruth_lists(fields.BoxListFields.boxes)):
+            tmp_bl = box_list_ops.to_absolute_coordinates(box_list.BoxList(boxes), true_image_shapes[i, 0],true_image_shapes[i, 1])
+            tmp_bl.add_field(fields.BoxListFields.keypoints, self.groundtruth_lists(fields.BoxListFields.keypoints)[i])
+            groundtruth_boxlists.append(tmp_bl)
+
+
         groundtruth_classes_with_background_list = [
             tf.to_float(
                 tf.pad(one_hot_encoding, [[0, 0], [1, 0]], mode='CONSTANT'))

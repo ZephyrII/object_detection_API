@@ -26,6 +26,7 @@ from object_detection.predictors.heads import class_head
 from object_detection.predictors.heads import keras_box_head
 from object_detection.predictors.heads import keras_class_head
 from object_detection.predictors.heads import mask_head
+from object_detection.predictors.heads import keypoint_head
 from object_detection.protos import box_predictor_pb2
 
 
@@ -385,6 +386,12 @@ def build_mask_rcnn_box_predictor(is_training,
             mask_prediction_conv_depth=mask_prediction_conv_depth,
             masks_are_class_agnostic=masks_are_class_agnostic,
             convolve_then_upsample=convolve_then_upsample_masks)
+    third_stage_heads[mask_rcnn_box_predictor.KEYPOINTS_PREDICTIONS] = keypoint_head.MaskRCNNKeypointHead(
+                      num_keypoints=6,
+                      conv_hyperparams_fn=conv_hyperparams_fn,
+                      keypoint_heatmap_height=mask_height,
+                      keypoint_heatmap_width=mask_width)
+
   return mask_rcnn_box_predictor.MaskRCNNBoxPredictor(
       is_training=is_training,
       num_classes=num_classes,
