@@ -36,11 +36,30 @@ def scale(keypoints, y_scale, x_scale, scope=None):
     new_keypoints: a tensor of shape [num_instances, num_keypoints, 2]
   """
   with tf.name_scope(scope, 'Scale'):
-    y_scale = tf.cast(y_scale, tf.float32)
-    x_scale = tf.cast(x_scale, tf.float32)
-    new_keypoints = keypoints * [[[y_scale, x_scale]]]
+    y_scale = tf.cast(y_scale, tf.float64)
+    x_scale = tf.cast(x_scale, tf.float64)
+    new_keypoints = tf.cast(keypoints, tf.float64) * [[[y_scale, x_scale]]]
     return new_keypoints
 
+def get_absolute_img_coords(keypoints, detection_boxes, keypoints_mask_size_y, keypoints_mask_size_x, scope=None):
+  """Scales keypoint coordinates in x and y dimensions.
+
+  Args:
+    keypoints: a tensor of shape [num_instances, num_keypoints, 2]
+    y_scale: (float) scalar tensor
+    x_scale: (float) scalar tensor
+    scope: name scope.
+
+  Returns:
+    new_keypoints: a tensor of shape [num_instances, num_keypoints, 2]
+  """
+  ymin, xmin, ymax, xmax = tf.unstack(tf.transpose(detection_boxes))
+  with tf.name_scope(scope, 'Scale'):
+    y_scale = tf.cast(ymax-ymin, tf.float64)/keypoints_mask_size_y
+    x_scale = tf.cast(xmax-xmin, tf.float64)/keypoints_mask_size_x
+    new_keypoints = tf.cast(keypoints, tf.float64) * tf.transpose([[y_scale, x_scale]], [2, 0, 1])
+    translated_keypoints = tf.cast(new_keypoints, tf.float64) + tf.cast(tf.transpose([[ymin, xmin]], [2, 0, 1]), tf.float64)
+    return translated_keypoints
 
 def clip_to_window(keypoints, window, scope=None):
   """Clips keypoints to a window.

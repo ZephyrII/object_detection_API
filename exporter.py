@@ -210,7 +210,6 @@ def add_output_tensor_nodes(postprocessed_tensors,
   classes = postprocessed_tensors.get(
       detection_fields.detection_classes) + label_id_offset
   keypoints = postprocessed_tensors.get(detection_fields.detection_keypoints)
-  print("loooooooool\n\n\n\n", keypoints)
   masks = postprocessed_tensors.get(detection_fields.detection_masks)
   num_detections = postprocessed_tensors.get(detection_fields.num_detections)
   outputs = {}
@@ -238,7 +237,6 @@ def add_output_tensor_nodes(postprocessed_tensors,
       postprocessed_tensors.get('box_classifier_features'), name='box_classifier_features')
 
   if keypoints is not None:
-    print("lol keys")
     outputs[detection_fields.detection_keypoints] = tf.identity(
         keypoints, name=detection_fields.detection_keypoints)
   if masks is not None:

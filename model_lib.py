@@ -100,10 +100,13 @@ def _prepare_groundtruth_for_eval(detection_model, class_agnostic,
   if detection_model.groundtruth_has_field(fields.BoxListFields.masks):
     groundtruth[input_data_fields.groundtruth_instance_masks] = tf.stack(
         detection_model.groundtruth_lists(fields.BoxListFields.masks))
-
   if detection_model.groundtruth_has_field(fields.BoxListFields.is_crowd):
     groundtruth[input_data_fields.groundtruth_is_crowd] = tf.stack(
         detection_model.groundtruth_lists(fields.BoxListFields.is_crowd))
+
+  if detection_model.groundtruth_has_field(fields.BoxListFields.keypoints):
+    groundtruth[input_data_fields.groundtruth_keypoints] = tf.stack(
+            detection_model.groundtruth_lists(fields.BoxListFields.keypoints))
 
   groundtruth[input_data_fields.num_groundtruth_boxes] = (
       tf.tile([max_number_of_boxes], multiples=[groundtruth_boxes_shape[0]]))

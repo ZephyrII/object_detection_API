@@ -35,7 +35,7 @@ flags.DEFINE_string('data_dir', '', 'Root directory to raw PASCAL VOC dataset.')
 flags.DEFINE_string('set', 'train', 'Convert training set, validation set or '
                                     'merged set.')
 
-flags.DEFINE_string('samples_per_file', '100',
+flags.DEFINE_string('samples_per_file', '20',
                     'Samples per tfrecord file')
 flags.DEFINE_string('output_path', '', 'Path to output TFRecord')
 flags.DEFINE_string('label_map_path', 'data/pascal_label_map.pbtxt',
@@ -56,6 +56,7 @@ def dict_to_tf_example(xml_data, img_fname, label_fname, class_name):
     label = cv2.imread(label_fname)
     width = label.shape[1]
     height = label.shape[0]
+    print(width, height)
     mask_coords = np.argwhere(label == 1)
     feature_dict = {
         'image/height': dataset_util.int64_feature(height),
@@ -94,7 +95,6 @@ def dict_to_tf_example(xml_data, img_fname, label_fname, class_name):
         for kp_xml in obj.find('keypoints').findall('keypoint'):
             keypoints_x.append(float(kp_xml.find('x').text)/width)
             keypoints_y.append(float(kp_xml.find('y').text)/height)
-        print(keypoints_x, keypoints_y)
 
         classes = []
         classes_text = [class_name.encode('utf8')]
@@ -125,7 +125,7 @@ def get_output_filename(output_dir, idx):
     if idx % 10 == 3:
         return '%s/charger_test_%03d.tfrecord' % (output_dir, idx)
     else:
-        return '%s/charger_train_%03d.tfrecord' % (output_dir, idx)
+        return '%s/charger_train_%03d.tfrecord' % (output_dir, int(idx/3))
 
 
 def main(_):

@@ -1216,7 +1216,6 @@ class FasterRCNNMetaArch(model.DetectionModel):
                                                                                 prediction_dict['proposal_boxes'])
             detections_dict['class_predictions_with_background'] = prediction_dict['class_predictions_with_background']
             detections_dict['box_classifier_features'] = prediction_dict['box_classifier_features']
-            print(prediction_dict[box_predictor.KEYPOINTS_PREDICTIONS])
             detections_dict['detection_keypoints'] = prediction_dict[box_predictor.KEYPOINTS_PREDICTIONS]
 
             return detections_dict
@@ -1224,8 +1223,13 @@ class FasterRCNNMetaArch(model.DetectionModel):
         if self._number_of_stages == 3:
             # Post processing is already performed in 3rd stage. We need to transfer
             # postprocessed tensors from `prediction_dict` to `detections_dict`.
-            prediction_dict['detection_keypoints'] = prediction_dict[box_predictor.KEYPOINTS_PREDICTIONS]
-            del prediction_dict[box_predictor.KEYPOINTS_PREDICTIONS]
+            x = tf.reshape(prediction_dict[box_predictor.KEYPOINTS_PREDICTIONS],
+                           [100, 6, -1])
+            indices = tf.argmax(x, axis=-1)  # this gives you indices from 0 to 600^2
+            col_indices = indices / 56
+            row_indices = tf.cast(indices % 56, tf.float64)
+            prediction_dict['detection_keypoints'] = tf.expand_dims(tf.transpose(tf.stack([col_indices, row_indices]), [1, 2, 0]), 0)
+            # prediction_dict['detection_keypoints'] = prediction_dict[box_predictor.KEYPOINTS_PREDICTIONS]
             return prediction_dict
 
     def _add_detection_features_output_node(self, detection_boxes,
@@ -1467,7 +1471,6 @@ class FasterRCNNMetaArch(model.DetectionModel):
             tmp_bl = box_list_ops.to_absolute_coordinates(box_list.BoxList(boxes), true_image_shapes[i, 0],true_image_shapes[i, 1])
             tmp_bl.add_field(fields.BoxListFields.keypoints, self.groundtruth_lists(fields.BoxListFields.keypoints)[i])
             groundtruth_boxlists.append(tmp_bl)
-
 
         groundtruth_classes_with_background_list = [
             tf.to_float(

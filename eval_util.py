@@ -514,6 +514,11 @@ def _resize_groundtruth_masks(args):
   return tf.cast(tf.squeeze(mask, 3), tf.uint8)
 
 
+def _scale_keypoint_to_absolute_with_translate(args):
+  detection_boxes, keypoints, keypoints_mask_size = args
+  return keypoint_ops.get_absolute_img_coords(keypoints, detection_boxes, keypoints_mask_size[0], keypoints_mask_size[1])
+
+
 def _scale_keypoint_to_absolute(args):
   keypoints, image_shape = args
   return keypoint_ops.scale(keypoints, image_shape[0], image_shape[1])
@@ -779,9 +784,9 @@ def result_dict_for_batched_example(images,
     if scale_to_absolute:
       output_dict[detection_fields.detection_keypoints] = (
           shape_utils.static_or_dynamic_map_fn(
-              _scale_keypoint_to_absolute,
-              elems=[detection_keypoints, original_image_spatial_shapes],
-              dtype=tf.float32))
+              _scale_keypoint_to_absolute_with_translate,
+              elems=[output_dict[detection_fields.detection_boxes], detection_keypoints, (56, 56)],
+              dtype=tf.float64))
 
   if groundtruth:
     if max_gt_boxes is None:
@@ -806,7 +811,16 @@ def result_dict_for_batched_example(images,
           shape_utils.static_or_dynamic_map_fn(
               _scale_box_to_absolute,
               elems=[groundtruth_boxes, original_image_spatial_shapes],
-              dtype=tf.float32))
+              dtype=tf.float64))
+
+    if input_data_fields.groundtruth_keypoints in groundtruth:
+      keypoints = groundtruth[input_data_fields.groundtruth_keypoints]
+      groundtruth[input_data_fields.groundtruth_keypoints] = (
+          shape_utils.static_or_dynamic_map_fn(
+              _scale_keypoint_to_absolute,
+              elems=[keypoints, original_image_spatial_shapes],
+              dtype=tf.float64))
+    output_dict.update(groundtruth)
 
     # For class-agnostic models, groundtruth classes all become 1.
     if class_agnostic:

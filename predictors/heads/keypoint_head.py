@@ -85,7 +85,6 @@ class MaskRCNNKeypointHead(head.Head):
     Raises:
       ValueError: If num_predictions_per_location is not 1.
     """
-    print('lol keypoints\n\n\n')
     if num_predictions_per_location != 1:
       raise ValueError('Only num_predictions_per_location=1 is supported')
     with slim.arg_scope(self._conv_hyperparams_fn()):

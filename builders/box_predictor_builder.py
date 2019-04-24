@@ -388,9 +388,7 @@ def build_mask_rcnn_box_predictor(is_training,
             convolve_then_upsample=convolve_then_upsample_masks)
     third_stage_heads[mask_rcnn_box_predictor.KEYPOINTS_PREDICTIONS] = keypoint_head.MaskRCNNKeypointHead(
                       num_keypoints=6,
-                      conv_hyperparams_fn=conv_hyperparams_fn,
-                      keypoint_heatmap_height=mask_height,
-                      keypoint_heatmap_width=mask_width)
+                      conv_hyperparams_fn=conv_hyperparams_fn)
 
   return mask_rcnn_box_predictor.MaskRCNNBoxPredictor(
       is_training=is_training,
