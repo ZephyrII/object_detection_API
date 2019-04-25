@@ -41,7 +41,7 @@ def scale(keypoints, y_scale, x_scale, scope=None):
     new_keypoints = tf.cast(keypoints, tf.float64) * [[[y_scale, x_scale]]]
     return new_keypoints
 
-def get_absolute_img_coords(keypoints, detection_boxes, keypoints_mask_size_y, keypoints_mask_size_x, scope=None):
+def get_absolute_img_coords(keypoints, detection_boxes, scope=None):
   """Scales keypoint coordinates in x and y dimensions.
 
   Args:
@@ -55,8 +55,8 @@ def get_absolute_img_coords(keypoints, detection_boxes, keypoints_mask_size_y, k
   """
   ymin, xmin, ymax, xmax = tf.unstack(tf.transpose(detection_boxes))
   with tf.name_scope(scope, 'Scale'):
-    y_scale = tf.cast(ymax-ymin, tf.float64)/keypoints_mask_size_y
-    x_scale = tf.cast(xmax-xmin, tf.float64)/keypoints_mask_size_x
+    y_scale = tf.cast(ymax-ymin, tf.float64)
+    x_scale = tf.cast(xmax-xmin, tf.float64)
     new_keypoints = tf.cast(keypoints, tf.float64) * tf.transpose([[y_scale, x_scale]], [2, 0, 1])
     translated_keypoints = tf.cast(new_keypoints, tf.float64) + tf.cast(tf.transpose([[ymin, xmin]], [2, 0, 1]), tf.float64)
     return translated_keypoints

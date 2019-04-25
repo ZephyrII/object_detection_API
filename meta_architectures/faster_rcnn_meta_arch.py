@@ -1225,9 +1225,9 @@ class FasterRCNNMetaArch(model.DetectionModel):
             # postprocessed tensors from `prediction_dict` to `detections_dict`.
             x = tf.reshape(prediction_dict[box_predictor.KEYPOINTS_PREDICTIONS],
                            [100, 6, -1])
-            indices = tf.argmax(x, axis=-1)  # this gives you indices from 0 to 600^2
-            col_indices = indices / 56
-            row_indices = tf.cast(indices % 56, tf.float64)
+            indices = tf.argmax(x, axis=-1)
+            col_indices = indices / 56 /56
+            row_indices = tf.cast(indices % 56, tf.float64) / 56
             prediction_dict['detection_keypoints'] = tf.expand_dims(tf.transpose(tf.stack([col_indices, row_indices]), [1, 2, 0]), 0)
             # prediction_dict['detection_keypoints'] = prediction_dict[box_predictor.KEYPOINTS_PREDICTIONS]
             return prediction_dict
@@ -1468,7 +1468,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
 
         groundtruth_boxlists = []
         for i, boxes in enumerate(self.groundtruth_lists(fields.BoxListFields.boxes)):
-            tmp_bl = box_list_ops.to_absolute_coordinates(box_list.BoxList(boxes), true_image_shapes[i, 0],true_image_shapes[i, 1])
+            tmp_bl = box_list_ops.to_absolute_coordinates(box_list.BoxList(boxes), true_image_shapes[i, 0], true_image_shapes[i, 1])
             tmp_bl.add_field(fields.BoxListFields.keypoints, self.groundtruth_lists(fields.BoxListFields.keypoints)[i])
             groundtruth_boxlists.append(tmp_bl)
 

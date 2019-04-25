@@ -56,7 +56,6 @@ def dict_to_tf_example(xml_data, img_fname, label_fname, class_name):
     label = cv2.imread(label_fname)
     width = label.shape[1]
     height = label.shape[0]
-    print(width, height)
     mask_coords = np.argwhere(label == 1)
     feature_dict = {
         'image/height': dataset_util.int64_feature(height),
@@ -72,14 +71,6 @@ def dict_to_tf_example(xml_data, img_fname, label_fname, class_name):
     if mask_coords.shape[0] > 0:
 
         obj = xml_data.find('object')
-        # xmin = []
-        # ymin = []
-        # xmax = []
-        # ymax = []
-        # xmin.append(float(obj.find('bndbox').find('xmin').text))
-        # ymin.append(float(obj.find('bndbox').find('ymin').text))
-        # xmax.append(float(obj.find('bndbox').find('xmax').text))
-        # ymax.append(float(obj.find('bndbox').find('ymax').text))
         rel_xmin = np.min(mask_coords[:, 1])
         rel_ymin = np.min(mask_coords[:, 0])
         rel_xmax = np.max(mask_coords[:, 1])
@@ -92,9 +83,13 @@ def dict_to_tf_example(xml_data, img_fname, label_fname, class_name):
 
         keypoints_x = []
         keypoints_y = []
-        for kp_xml in obj.find('keypoints').findall('keypoint'):
-            keypoints_x.append(float(kp_xml.find('x').text)/width)
-            keypoints_y.append(float(kp_xml.find('y').text)/height)
+        for i in range(6):
+            kp_xml = obj.find('keypoints').find('keypoint'+str(i))
+            keypoints_x.append((float(kp_xml.find('x').text) - rel_xmin) / (rel_xmax - rel_xmin))
+            keypoints_y.append((float(kp_xml.find('y').text) - rel_ymin) / (rel_ymax - rel_ymin))
+        # for kp_xml in obj.find('keypoints').findall('keypoint'):
+        #     keypoints_x.append((float(kp_xml.find('x').text)-rel_xmin)/(rel_xmax-rel_xmin))
+        #     keypoints_y.append((float(kp_xml.find('y').text)-rel_ymin)/(rel_ymax-rel_ymin))
 
         classes = []
         classes_text = [class_name.encode('utf8')]
@@ -122,10 +117,10 @@ def dict_to_tf_example(xml_data, img_fname, label_fname, class_name):
 
 
 def get_output_filename(output_dir, idx):
-    if idx % 10 == 3:
+    if idx % 10 == 1:
         return '%s/charger_test_%03d.tfrecord' % (output_dir, idx)
     else:
-        return '%s/charger_train_%03d.tfrecord' % (output_dir, int(idx/3))
+        return '%s/charger_train_%03d.tfrecord' % (output_dir, int(idx))
 
 
 def main(_):

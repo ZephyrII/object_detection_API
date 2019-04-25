@@ -515,8 +515,8 @@ def _resize_groundtruth_masks(args):
 
 
 def _scale_keypoint_to_absolute_with_translate(args):
-  detection_boxes, keypoints, keypoints_mask_size = args
-  return keypoint_ops.get_absolute_img_coords(keypoints, detection_boxes, keypoints_mask_size[0], keypoints_mask_size[1])
+  detection_boxes, keypoints = args
+  return keypoint_ops.get_absolute_img_coords(keypoints, detection_boxes)
 
 
 def _scale_keypoint_to_absolute(args):
@@ -785,7 +785,7 @@ def result_dict_for_batched_example(images,
       output_dict[detection_fields.detection_keypoints] = (
           shape_utils.static_or_dynamic_map_fn(
               _scale_keypoint_to_absolute_with_translate,
-              elems=[output_dict[detection_fields.detection_boxes], detection_keypoints, (56, 56)],
+              elems=[output_dict[detection_fields.detection_boxes], detection_keypoints],
               dtype=tf.float64))
 
   if groundtruth:
@@ -803,22 +803,23 @@ def result_dict_for_batched_example(images,
               _resize_groundtruth_masks,
               elems=[masks, original_image_spatial_shapes],
               dtype=tf.uint8))
-
     output_dict.update(groundtruth)
+
     if scale_to_absolute:
       groundtruth_boxes = groundtruth[input_data_fields.groundtruth_boxes]
-      output_dict[input_data_fields.groundtruth_boxes] = (
+      groundtruth[input_data_fields.groundtruth_boxes] = (
           shape_utils.static_or_dynamic_map_fn(
               _scale_box_to_absolute,
               elems=[groundtruth_boxes, original_image_spatial_shapes],
-              dtype=tf.float64))
+              dtype=tf.float32))
+    output_dict.update(groundtruth)
 
     if input_data_fields.groundtruth_keypoints in groundtruth:
-      keypoints = groundtruth[input_data_fields.groundtruth_keypoints]
+      groundtruth_keypoints = groundtruth[input_data_fields.groundtruth_keypoints]
       groundtruth[input_data_fields.groundtruth_keypoints] = (
           shape_utils.static_or_dynamic_map_fn(
-              _scale_keypoint_to_absolute,
-              elems=[keypoints, original_image_spatial_shapes],
+              _scale_keypoint_to_absolute_with_translate,
+              elems=[tf.identity(output_dict[input_data_fields.groundtruth_boxes]), groundtruth_keypoints],
               dtype=tf.float64))
     output_dict.update(groundtruth)
 

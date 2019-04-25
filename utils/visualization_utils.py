@@ -493,7 +493,7 @@ def draw_side_by_side_evaluation_image(eval_dict,
       groundtruth_keypoints = tf.cast(
           tf.expand_dims(
               eval_dict[input_data_fields.groundtruth_keypoints][indx],
-              axis=0), tf.int16)
+              axis=0), tf.float32)
     images_with_detections = draw_bounding_boxes_on_image_tensors(
         tf.expand_dims(
             eval_dict[input_data_fields.original_image][indx], axis=0),
@@ -566,7 +566,7 @@ def draw_keypoints_on_image_array(image,
 def draw_keypoints_on_image(image,
                             keypoints,
                             color='red',
-                            radius=20,
+                            radius=2,
                             use_normalized_coordinates=True):
   """Draws keypoints on an image.
 
@@ -582,13 +582,14 @@ def draw_keypoints_on_image(image,
   im_width, im_height = image.size
   keypoints_x = [k[1] for k in keypoints]
   keypoints_y = [k[0] for k in keypoints]
+  print(keypoints_x)
   if use_normalized_coordinates:
     keypoints_x = tuple([im_width * x for x in keypoints_x])
     keypoints_y = tuple([im_height * y for y in keypoints_y])
   for keypoint_x, keypoint_y in zip(keypoints_x, keypoints_y):
     draw.ellipse([(keypoint_x - radius, keypoint_y - radius),
                   (keypoint_x + radius, keypoint_y + radius)],
-                 outline='AliceBlue', fill=color)
+                 outline='DarkViolet', fill=color)
 
 
 def draw_mask_on_image_array(image, mask, color='red', alpha=0.4):
@@ -720,7 +721,7 @@ def visualize_boxes_and_labels_on_image_array(
           box_to_color_map[box] = 'DarkOrange'
         else:
           box_to_color_map[box] = STANDARD_COLORS[
-              classes[i+16] % len(STANDARD_COLORS)]
+              classes[i] % len(STANDARD_COLORS)]
 
   # Draw all boxes onto image.
   for box, color in box_to_color_map.items():
@@ -753,7 +754,7 @@ def visualize_boxes_and_labels_on_image_array(
           image,
           box_to_keypoints_map[box],
           color=color,
-          radius=line_thickness / 2,
+          radius=line_thickness,
           use_normalized_coordinates=use_normalized_coordinates)
 
   return image
