@@ -422,7 +422,7 @@ def _build_faster_rcnn_model(frcnn_config, is_training, add_summaries):
 
   second_stage_target_assigner = target_assigner.create_target_assigner(
       'FasterRCNN',
-      'detection',
+      'keypoints',
       use_matmul_gather=frcnn_config.use_matmul_gather_in_matcher)
   second_stage_box_predictor = box_predictor_builder.build(
       hyperparams_builder.build,

@@ -34,6 +34,7 @@ images must be handled externally.
 import tensorflow as tf
 
 from object_detection.box_coders import faster_rcnn_box_coder
+from object_detection.box_coders import keypoint_box_coder
 from object_detection.box_coders import mean_stddev_box_coder
 from object_detection.core import box_coder as bcoder
 from object_detection.core import box_list
@@ -396,6 +397,14 @@ def create_target_assigner(reference, stage=None,
     box_coder = faster_rcnn_box_coder.FasterRcnnBoxCoder(
         scale_factors=[10.0, 10.0, 5.0, 5.0])
 
+  elif reference == 'FasterRCNN' and stage == 'keypoints':
+    similarity_calc = sim_calc.IouSimilarity()
+    # Uses all proposals with IOU < 0.5 as candidate negatives.
+    matcher = argmax_matcher.ArgMaxMatcher(matched_threshold=0.5,
+                                           negatives_lower_than_unmatched=True,
+                                           use_matmul_gather=use_matmul_gather)
+    box_coder = keypoint_box_coder.KeypointBoxCoder(6,
+        scale_factors=[10.0, 10.0, 5.0, 5.0])
   elif reference == 'FastRCNN':
     similarity_calc = sim_calc.IouSimilarity()
     matcher = argmax_matcher.ArgMaxMatcher(matched_threshold=0.5,

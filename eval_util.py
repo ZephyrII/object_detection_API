@@ -170,18 +170,18 @@ def visualize_detection_results(result_dict,
 
   # Plot groundtruth underneath detections
   if show_groundtruth:
-    groundtruth_boxes = result_dict[input_fields.groundtruth_boxes]
-    groundtruth_keypoints = result_dict.get(input_fields.groundtruth_keypoints)
-    vis_utils.visualize_boxes_and_labels_on_image_array(
-        image=image,
-        boxes=groundtruth_boxes,
-        classes=None,
-        scores=None,
-        category_index=category_index,
-        keypoints=groundtruth_keypoints,
-        use_normalized_coordinates=False,
-        max_boxes_to_draw=None,
-        groundtruth_box_visualization_color=groundtruth_box_visualization_color)
+      groundtruth_boxes = result_dict[input_fields.groundtruth_boxes]
+      groundtruth_keypoints = result_dict.get(input_fields.groundtruth_keypoints)
+      vis_utils.visualize_boxes_and_labels_on_image_array(
+          image=image,
+          boxes=groundtruth_boxes,
+          classes=None,
+          scores=None,
+          category_index=category_index,
+          keypoints=groundtruth_keypoints,
+          use_normalized_coordinates=False,
+          max_boxes_to_draw=None,
+          groundtruth_box_visualization_color=groundtruth_box_visualization_color)
   vis_utils.visualize_boxes_and_labels_on_image_array(
       image,
       detection_boxes,
@@ -785,7 +785,7 @@ def result_dict_for_batched_example(images,
       output_dict[detection_fields.detection_keypoints] = (
           shape_utils.static_or_dynamic_map_fn(
               _scale_keypoint_to_absolute_with_translate,
-              elems=[output_dict[detection_fields.detection_boxes], detection_keypoints],
+              elems=[output_dict[detection_fields.detection_boxes], tf.expand_dims(detection_keypoints,0)],
               dtype=tf.float64))
 
   if groundtruth:
@@ -830,6 +830,8 @@ def result_dict_for_batched_example(images,
       output_dict[input_data_fields.groundtruth_classes] = groundtruth_classes
 
     output_dict[input_data_fields.num_groundtruth_boxes] = max_gt_boxes
+
+    print()
 
   return output_dict
 
