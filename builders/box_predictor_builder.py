@@ -316,7 +316,8 @@ def build_mask_rcnn_box_predictor(is_training,
                                   mask_prediction_num_conv_layers=2,
                                   mask_prediction_conv_depth=256,
                                   masks_are_class_agnostic=False,
-                                  convolve_then_upsample_masks=False):
+                                  convolve_then_upsample_masks=False,
+                                  predict_keypoints=False):
   """Builds and returns a MaskRCNNBoxPredictor class.
 
   Args:
@@ -386,9 +387,10 @@ def build_mask_rcnn_box_predictor(is_training,
             mask_prediction_conv_depth=mask_prediction_conv_depth,
             masks_are_class_agnostic=masks_are_class_agnostic,
             convolve_then_upsample=convolve_then_upsample_masks)
-    third_stage_heads[mask_rcnn_box_predictor.KEYPOINTS_PREDICTIONS] = keypoint_head.MaskRCNNKeypointHead(
-                num_keypoints=6,
-                conv_hyperparams_fn=conv_hyperparams_fn,)
+    if predict_keypoints:
+        third_stage_heads[mask_rcnn_box_predictor.KEYPOINTS_PREDICTIONS] = keypoint_head.MaskRCNNKeypointHead(
+                    num_keypoints=6,
+                    conv_hyperparams_fn=conv_hyperparams_fn,)
 
   return mask_rcnn_box_predictor.MaskRCNNBoxPredictor(
       is_training=is_training,
@@ -548,7 +550,8 @@ def build(argscope_fn, box_predictor_config, is_training, num_classes,
         masks_are_class_agnostic=(
             config_box_predictor.masks_are_class_agnostic),
         convolve_then_upsample_masks=(
-            config_box_predictor.convolve_then_upsample_masks))
+            config_box_predictor.convolve_then_upsample_masks),
+        predict_keypoints=config_box_predictor.predict_keypoints)
 
   if box_predictor_oneof == 'rfcn_box_predictor':
     config_box_predictor = box_predictor_config.rfcn_box_predictor

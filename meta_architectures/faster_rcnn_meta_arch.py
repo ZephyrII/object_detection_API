@@ -699,9 +699,10 @@ class FasterRCNNMetaArch(model.DetectionModel):
         if self._number_of_stages == 3:
             prediction_dict = self._predict_third_stage(
                 prediction_dict, true_image_shapes)
-            prediction_dict['detection_keypoints'] = prediction_dict[box_predictor.KEYPOINTS_PREDICTIONS] # tf.expand_dims(prediction_dict[box_predictor.KEYPOINTS_PREDICTIONS], 0)
-            prediction_dict['pred_box_encodings_with_kp'] = tf.concat([prediction_dict['refined_box_encodings'],
+            if box_predictor.KEYPOINTS_PREDICTIONS in prediction_dict:
+                prediction_dict['refined_box_encodings'] = tf.concat([prediction_dict['refined_box_encodings'],
                                                             tf.reshape(prediction_dict[box_predictor.KEYPOINTS_PREDICTIONS], [-1, 1, 12])],2)
+                prediction_dict['detection_keypoints'] = prediction_dict[box_predictor.KEYPOINTS_PREDICTIONS] # tf.expand_dims(prediction_dict[box_predictor.KEYPOINTS_PREDICTIONS], 0)
             # if self._is_training:
             #     x = tf.reshape(prediction_dict[box_predictor.KEYPOINTS_PREDICTIONS],
             #                    [self._second_stage_batch_size, 6, -1])
@@ -906,7 +907,8 @@ class FasterRCNNMetaArch(model.DetectionModel):
                     prediction_stage=3)
             prediction_dict['mask_predictions'] = tf.squeeze(mask_and_key_predictions[
                                                                  box_predictor.MASK_PREDICTIONS], axis=1)
-            prediction_dict[box_predictor.KEYPOINTS_PREDICTIONS] = tf.squeeze(mask_and_key_predictions[
+            if box_predictor.KEYPOINTS_PREDICTIONS in mask_and_key_predictions:
+                prediction_dict[box_predictor.KEYPOINTS_PREDICTIONS] = tf.squeeze(mask_and_key_predictions[
                                                                  box_predictor.KEYPOINTS_PREDICTIONS], axis=1)
         else:
             detections_dict = self._postprocess_box_classifier(
@@ -945,7 +947,9 @@ class FasterRCNNMetaArch(model.DetectionModel):
             detection_masks = tf.squeeze(mask_and_key_predictions[
                                              box_predictor.MASK_PREDICTIONS], axis=1)
 
-            prediction_dict[box_predictor.KEYPOINTS_PREDICTIONS] = tf.squeeze(mask_and_key_predictions[
+            if box_predictor.KEYPOINTS_PREDICTIONS in mask_and_key_predictions:
+                print('heeeehe')
+                prediction_dict[box_predictor.KEYPOINTS_PREDICTIONS] = tf.squeeze(mask_and_key_predictions[
                                                                  box_predictor.KEYPOINTS_PREDICTIONS], axis=1)
 
             _, num_classes, mask_height, mask_width = (
@@ -1353,8 +1357,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
             proposal_boxes = tf.stop_gradient(proposal_boxes)
             if not self._hard_example_miner:
                 (groundtruth_boxlists, groundtruth_classes_with_background_list, _,
-                 groundtruth_weights_list, groundtruth_keypoints
-                 ) = self._format_groundtruth_data(true_image_shapes)
+                 groundtruth_weights_list) = self._format_groundtruth_data(true_image_shapes)
                 (proposal_boxes, proposal_scores,
                  num_proposals) = self._sample_box_classifier_batch(
                     proposal_boxes, proposal_scores, num_proposals,
@@ -1489,7 +1492,8 @@ class FasterRCNNMetaArch(model.DetectionModel):
         groundtruth_boxlists = []
         for i, boxes in enumerate(self.groundtruth_lists(fields.BoxListFields.boxes)):
             tmp_bl = box_list_ops.to_absolute_coordinates(box_list.BoxList(boxes), true_image_shapes[i, 0], true_image_shapes[i, 1])
-            tmp_bl.add_field(fields.BoxListFields.keypoints, self.groundtruth_lists(fields.BoxListFields.keypoints)[i])
+            if self.groundtruth_has_field(fields.BoxListFields.keypoints):
+                tmp_bl.add_field(fields.BoxListFields.keypoints, self.groundtruth_lists(fields.BoxListFields.keypoints)[i])
             groundtruth_boxlists.append(tmp_bl)
 
         groundtruth_classes_with_background_list = [
@@ -1531,7 +1535,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
                 groundtruth_weights_list.append(groundtruth_weights)
 
         return (groundtruth_boxlists, groundtruth_classes_with_background_list,
-                groundtruth_masks_list, groundtruth_weights_list, self.groundtruth_lists(fields.BoxListFields.keypoints))
+                groundtruth_masks_list, groundtruth_weights_list)
 
     def _sample_box_classifier_minibatch_single_image(
             self, proposal_boxlist, num_valid_proposals, groundtruth_boxlist,
@@ -1762,22 +1766,24 @@ class FasterRCNNMetaArch(model.DetectionModel):
         """
         with tf.name_scope(scope, 'Loss', prediction_dict.values()):
             (groundtruth_boxlists, groundtruth_classes_with_background_list,
-             groundtruth_masks_list, groundtruth_weights_list, groundtruth_keypoints
-             ) = self._format_groundtruth_data(true_image_shapes)
+             groundtruth_masks_list, groundtruth_weights_list) = self._format_groundtruth_data(true_image_shapes)
             loss_dict = self._loss_rpn(
                 prediction_dict['rpn_box_encodings'],
                 prediction_dict['rpn_objectness_predictions_with_background'],
                 prediction_dict['anchors'], groundtruth_boxlists,
                 groundtruth_classes_with_background_list, groundtruth_weights_list)
+            if 'detection_keypoints' in prediction_dict:
+                detection_keypoints = prediction_dict['detection_keypoints']
+            else:
+                detection_keypoints = None
             if self._number_of_stages > 1:
                 loss_dict.update(
                     self._loss_box_classifier(
-                        # prediction_dict['refined_box_encodings'],
-                        prediction_dict['pred_box_encodings_with_kp'],
+                        prediction_dict['refined_box_encodings'],
+                        # prediction_dict['pred_box_encodings_with_kp'],
                         prediction_dict['class_predictions_with_background'],
                         prediction_dict['proposal_boxes'],
-                        prediction_dict['detection_keypoints'],
-                        groundtruth_keypoints,
+                        detection_keypoints,
                         prediction_dict['num_proposals'], groundtruth_boxlists,
                         groundtruth_classes_with_background_list,
                         groundtruth_weights_list, prediction_dict['image_shape'],
@@ -1884,7 +1890,6 @@ class FasterRCNNMetaArch(model.DetectionModel):
                              class_predictions_with_background,
                              proposal_boxes,
                              proposal_keypoints,
-                             groundtruth_keypoints,
                              num_proposals,
                              groundtruth_boxlists,
                              groundtruth_classes_with_background_list,
@@ -1959,7 +1964,8 @@ class FasterRCNNMetaArch(model.DetectionModel):
             proposal_boxlists = []
             for i, boxes in enumerate(tf.unstack(proposal_boxes)):
                 tmp_bl = box_list.BoxList(boxes)
-                tmp_bl.add_field(fields.BoxListFields.keypoints, proposal_keypoints[i])
+                if proposal_keypoints is not None:
+                    tmp_bl.add_field(fields.BoxListFields.keypoints, proposal_keypoints[i])
                 proposal_boxlists.append(tmp_bl)
 
             # proposal_boxlists = [
@@ -1996,10 +2002,15 @@ class FasterRCNNMetaArch(model.DetectionModel):
                 flat_cls_targets_with_background.get_shape()[1])
 
             # If using a shared box across classes use directly
+
+            if proposal_keypoints is not None:
+                box_encodings_multiply = 4
+            else:
+                box_encodings_multiply = 1
             if refined_box_encodings.shape[1] == 1:
                 reshaped_refined_box_encodings = tf.reshape(
                     refined_box_encodings,
-                    [batch_size, self.max_num_proposals, self._box_coder.code_size*4])
+                    [batch_size, self.max_num_proposals, self._box_coder.code_size*box_encodings_multiply])
             # For anchors with multiple labels, picks refined_location_encodings
             # for just one class to avoid over-counting for regression loss and
             # (optionally) mask loss.

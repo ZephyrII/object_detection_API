@@ -420,10 +420,16 @@ def _build_faster_rcnn_model(frcnn_config, is_training, add_summaries):
   maxpool_kernel_size = frcnn_config.maxpool_kernel_size
   maxpool_stride = frcnn_config.maxpool_stride
 
-  second_stage_target_assigner = target_assigner.create_target_assigner(
-      'FasterRCNN',
-      'keypoints',
-      use_matmul_gather=frcnn_config.use_matmul_gather_in_matcher)
+  if frcnn_config.second_stage_box_predictor.mask_rcnn_box_predictor.predict_keypoints:
+      second_stage_target_assigner = target_assigner.create_target_assigner(
+          'FasterRCNN',
+          'keypoints',
+          use_matmul_gather=frcnn_config.use_matmul_gather_in_matcher)
+  else:
+      second_stage_target_assigner = target_assigner.create_target_assigner(
+          'FasterRCNN',
+          'detection',
+          use_matmul_gather=frcnn_config.use_matmul_gather_in_matcher)
   second_stage_box_predictor = box_predictor_builder.build(
       hyperparams_builder.build,
       frcnn_config.second_stage_box_predictor,
