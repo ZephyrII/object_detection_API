@@ -221,20 +221,23 @@ def add_output_tensor_nodes(postprocessed_tensors,
       classes, name=detection_fields.detection_classes)
   outputs[detection_fields.num_detections] = tf.identity(
       num_detections, name=detection_fields.num_detections)
-  outputs[detection_fields.rpn_box_predictor_features] = tf.identity(
-      postprocessed_tensors.get(detection_fields.rpn_box_predictor_features), name=detection_fields.rpn_box_predictor_features)
-  outputs[detection_fields.class_predictor_weights] = tf.identity(
-      postprocessed_tensors.get(detection_fields.class_predictor_weights), name=detection_fields.class_predictor_weights)
-  outputs['ss_class_predictor_weights'] = tf.identity(
-      postprocessed_tensors.get('ss_class_predictor_weights'), name='ss_class_predictor_weights')
-  outputs['preprocessed_inputs'] = tf.identity(
-      postprocessed_tensors.get('preprocessed_inputs'), name='preprocessed_inputs')
-  outputs['refined_box_encodings'] = tf.identity(
-      postprocessed_tensors.get('refined_box_encodings'), name='refined_box_encodings')
-  outputs['class_predictions_with_background'] = tf.identity(
-      postprocessed_tensors.get('class_predictions_with_background'), name='class_predictions_with_background')
-  outputs['box_classifier_features'] = tf.identity(
-      postprocessed_tensors.get('box_classifier_features'), name='box_classifier_features')
+  # feature maps
+  # box_pred_features = postprocessed_tensors.get(detection_fields.rpn_box_predictor_features)
+  # if box_pred_features is not None:
+  #     outputs[detection_fields.rpn_box_predictor_features] = tf.identity(
+  #         box_pred_features, name=detection_fields.rpn_box_predictor_features)
+  #     outputs[detection_fields.class_predictor_weights] = tf.identity(
+  #         postprocessed_tensors.get(detection_fields.class_predictor_weights), name=detection_fields.class_predictor_weights)
+  #     outputs['ss_class_predictor_weights'] = tf.identity(
+  #         postprocessed_tensors.get('ss_class_predictor_weights'), name='ss_class_predictor_weights')
+  #     outputs['preprocessed_inputs'] = tf.identity(
+  #         postprocessed_tensors.get('preprocessed_inputs'), name='preprocessed_inputs')
+  #     outputs['refined_box_encodings'] = tf.identity(
+  #         postprocessed_tensors.get('refined_box_encodings'), name='refined_box_encodings')
+  #     outputs['class_predictions_with_background'] = tf.identity(
+  #         postprocessed_tensors.get('class_predictions_with_background'), name='class_predictions_with_background')
+  #     outputs['box_classifier_features'] = tf.identity(
+  #         postprocessed_tensors.get('box_classifier_features'), name='box_classifier_features')
 
   if keypoints is not None:
     outputs[detection_fields.detection_keypoints] = tf.identity(

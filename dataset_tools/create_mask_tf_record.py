@@ -83,8 +83,10 @@ def dict_to_tf_example(img_fname, label_fname, class_name):
         encoded_jpg = fid.read()
     encoded_jpg_io = io.BytesIO(encoded_jpg)
     image = PIL.Image.open(encoded_jpg_io)
-    if image.format != 'JPEG':
-        raise ValueError('Image format not JPEG')
+    if image.format == "PNG":
+        image = image.convert('RGB')
+    # if image.format != 'JPEG':
+    #     raise ValueError('Image format not JPEG')
     key = hashlib.sha256(encoded_jpg).hexdigest()
 
     label = cv2.imread(label_fname)

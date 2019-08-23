@@ -948,7 +948,6 @@ class FasterRCNNMetaArch(model.DetectionModel):
                                              box_predictor.MASK_PREDICTIONS], axis=1)
 
             if box_predictor.KEYPOINTS_PREDICTIONS in mask_and_key_predictions:
-                print('heeeehe')
                 prediction_dict[box_predictor.KEYPOINTS_PREDICTIONS] = tf.squeeze(mask_and_key_predictions[
                                                                  box_predictor.KEYPOINTS_PREDICTIONS], axis=1)
 
@@ -1200,12 +1199,12 @@ class FasterRCNNMetaArch(model.DetectionModel):
                         tf.to_float(num_proposals),
                 }
 
-        class_predictor_weights = [v for v in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES) if
-                                   v.name.endswith('FirstStageBoxPredictor/ClassPredictor/weights:0')]
-        ss_class_predictor_weights = [v for v in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES) if
-                                      v.name.endswith('SecondStageBoxPredictor/ClassPredictor/weights:0')]
-        prediction_dict['class_predictor_weights'] = tf.identity(class_predictor_weights)
-        prediction_dict['ss_class_predictor_weights'] = tf.identity(ss_class_predictor_weights)
+        # class_predictor_weights = [v for v in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES) if
+        #                            v.name.endswith('FirstStageBoxPredictor/ClassPredictor/weights:0')]
+        # ss_class_predictor_weights = [v for v in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES) if
+        #                               v.name.endswith('SecondStageBoxPredictor/ClassPredictor/weights:0')]
+        # prediction_dict['class_predictor_weights'] = tf.identity(class_predictor_weights)
+        # prediction_dict['ss_class_predictor_weights'] = tf.identity(ss_class_predictor_weights)
         # TODO(jrru): Remove mask_predictions from _post_process_box_classifier.
         if (self._number_of_stages == 2 or
                 (self._number_of_stages == 3 and self._is_training)):
@@ -1231,29 +1230,25 @@ class FasterRCNNMetaArch(model.DetectionModel):
                  prediction_dict['refined_box_encodings'].shape[1],
                  self._box_coder.code_size])
 
-            detections_dict['rpn_box_predictor_features'] = prediction_dict['rpn_box_predictor_features']
-            detections_dict['class_predictor_weights'] = tf.identity(class_predictor_weights)
-            detections_dict['ss_class_predictor_weights'] = tf.identity(ss_class_predictor_weights)
-            detections_dict['preprocessed_inputs'] = prediction_dict['preprocessed_inputs']
+            # detections_dict['rpn_box_predictor_features'] = prediction_dict['rpn_box_predictor_features']
+            # detections_dict['class_predictor_weights'] = tf.identity(class_predictor_weights)
+            # detections_dict['ss_class_predictor_weights'] = tf.identity(ss_class_predictor_weights)
+            # detections_dict['preprocessed_inputs'] = prediction_dict['preprocessed_inputs']
             detections_dict['refined_box_encodings'] = self._batch_decode_boxes(refined_box_encodings_batch,
                                                                                 prediction_dict['proposal_boxes'])
             detections_dict['class_predictions_with_background'] = prediction_dict['class_predictions_with_background']
-            detections_dict['box_classifier_features'] = prediction_dict['box_classifier_features']
+            # detections_dict['box_classifier_features'] = prediction_dict['box_classifier_features']
 
-            detections_dict['detection_keypoints'] = prediction_dict[box_predictor.KEYPOINTS_PREDICTIONS]
+            if box_predictor.KEYPOINTS_PREDICTIONS in prediction_dict:
+                detections_dict['detection_keypoints'] = prediction_dict[box_predictor.KEYPOINTS_PREDICTIONS]
 
             return detections_dict
 
         if self._number_of_stages == 3:
             # Post processing is already performed in 3rd stage. We need to transfer
             # postprocessed tensors from `prediction_dict` to `detections_dict`.
-            # x = tf.reshape(prediction_dict[box_predictor.KEYPOINTS_PREDICTIONS],
-            #                [100, 6, -1])
-            # indices = tf.argmax(x, axis=-1)
-            # col_indices = indices / 56 /56
-            # row_indices = tf.cast(indices % 56, tf.float64) / 56
-            # prediction_dict['detection_keypoints'] = tf.expand_dims(tf.transpose(tf.stack([row_indices, col_indices]), [1, 2, 0]), 0)
-            prediction_dict['detection_keypoints'] = prediction_dict[box_predictor.KEYPOINTS_PREDICTIONS]
+            if box_predictor.KEYPOINTS_PREDICTIONS in prediction_dict:
+                prediction_dict['detection_keypoints'] = prediction_dict[box_predictor.KEYPOINTS_PREDICTIONS]
             return prediction_dict
 
     def _add_detection_features_output_node(self, detection_boxes,
@@ -2083,13 +2078,13 @@ class FasterRCNNMetaArch(model.DetectionModel):
                     raise ValueError('Groundtruth instance masks not provided. '
                                      'Please configure input reader.')
 
-                if not self._is_training:
-                    (proposal_boxes, proposal_boxlists, paddings_indicator,
-                     one_hot_flat_cls_targets_with_background
-                     ) = self._get_mask_proposal_boxes_and_classes(
-                        detection_boxes, num_detections, image_shape,
-                        groundtruth_boxlists, groundtruth_classes_with_background_list,
-                        groundtruth_weights_list)
+                # if not self._is_training:
+                #     (proposal_boxes, proposal_boxlists, paddings_indicator,
+                #      one_hot_flat_cls_targets_with_background
+                #      ) = self._get_mask_proposal_boxes_and_classes(
+                #         detection_boxes, num_detections, image_shape,
+                #         groundtruth_boxlists, groundtruth_classes_with_background_list,
+                #         groundtruth_weights_list)
                 unmatched_mask_label = tf.zeros(image_shape[1:3], dtype=tf.float32)
                 (batch_mask_targets, _, _, batch_mask_target_weights,
                  _) = target_assigner.batch_assign_targets(

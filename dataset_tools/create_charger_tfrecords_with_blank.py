@@ -44,7 +44,7 @@ flags.DEFINE_string('set', 'train', 'Convert training set, validation set or '
                                     'merged set.')
 flags.DEFINE_string('annotations_dir', 'Annotations',
                     '(Relative) path to annotations directory.')
-flags.DEFINE_string('samples_per_file', '200',
+flags.DEFINE_string('samples_per_file', '50',
                     'Samples per tfrecord file')
 flags.DEFINE_string('output_path', '', 'Path to output TFRecord')
 flags.DEFINE_string('label_map_path', 'data/pascal_label_map.pbtxt',
@@ -89,8 +89,8 @@ def dict_to_tf_example(img_fname,
         encoded_jpg = fid.read()
     encoded_jpg_io = io.BytesIO(encoded_jpg)
     image = PIL.Image.open(encoded_jpg_io)
-    if image.format != 'JPEG':
-        raise ValueError('Image format not JPEG')
+    if image.format == "PNG":
+        image = image.convert('RGB')
     key = hashlib.sha256(encoded_jpg).hexdigest()
 
     if data == None:
@@ -184,7 +184,7 @@ def main(_):
         while idx < len(file_list) and j < int(FLAGS.samples_per_file):
             fname = file_list[idx]
             img_full_path = os.path.join(im_path, fname)
-            path = os.path.join(annotaions_path, fname[0:-4] + ".xml")
+            path = os.path.join(annotaions_path, fname[0:-4] + ".txt")
             data = None
             try:
                 with tf.gfile.GFile(path, 'r') as fid:

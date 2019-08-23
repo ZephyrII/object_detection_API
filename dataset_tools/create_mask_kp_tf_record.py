@@ -35,7 +35,7 @@ flags.DEFINE_string('data_dir', '', 'Root directory to raw PASCAL VOC dataset.')
 flags.DEFINE_string('set', 'train', 'Convert training set, validation set or '
                                     'merged set.')
 
-flags.DEFINE_string('samples_per_file', '50',
+flags.DEFINE_string('samples_per_file', '200',
                     'Samples per tfrecord file')
 flags.DEFINE_string('output_path', '', 'Path to output TFRecord')
 flags.DEFINE_string('label_map_path', 'data/pascal_label_map.pbtxt',
@@ -43,19 +43,22 @@ flags.DEFINE_string('label_map_path', 'data/pascal_label_map.pbtxt',
 FLAGS = flags.FLAGS
 
 
-def dict_to_tf_example(xml_data, img_fname, label_fname, class_name):
+def dict_to_tf_example(xml_data, img_fname, label_fname):
 
     with tf.gfile.GFile(img_fname, 'rb') as fid:
         encoded_jpg = fid.read()
     encoded_jpg_io = io.BytesIO(encoded_jpg)
     image = PIL.Image.open(encoded_jpg_io)
-    if image.format != 'JPEG':
-        raise ValueError('Image format not JPEG')
+    if image.format == "PNG":
+        image = image.convert('RGB')
+    # if image.format != 'JPEG':
+    #     raise ValueError('Image format not JPEG')
     key = hashlib.sha256(encoded_jpg).hexdigest()
 
+    print(label_fname)
     label = cv2.imread(label_fname)
-    width = label.shape[1]
-    height = label.shape[0]
+    width = image.width
+    height = image.height
     mask_coords = np.argwhere(label == 1)
     feature_dict = {
         'image/height': dataset_util.int64_feature(height),
@@ -91,9 +94,14 @@ def dict_to_tf_example(xml_data, img_fname, label_fname, class_name):
         #     keypoints_x.append((float(kp_xml.find('x').text)-rel_xmin)/(rel_xmax-rel_xmin))
         #     keypoints_y.append((float(kp_xml.find('y').text)-rel_ymin)/(rel_ymax-rel_ymin))
 
+        class_name = obj.find('name').text
         classes = []
         classes_text = [class_name.encode('utf8')]
-        classes.append(1)
+        if class_name=='charger':
+            classes.append(1)
+        else:
+            classes.append(2)
+
 
         feature_dict['image/object/keypoint/x'] = dataset_util.float_list_feature(keypoints_x)
         feature_dict['image/object/keypoint/y'] = dataset_util.float_list_feature(keypoints_y)
@@ -117,10 +125,10 @@ def dict_to_tf_example(xml_data, img_fname, label_fname, class_name):
 
 
 def get_output_filename(output_dir, idx):
-    if idx % 10 == 1:
-        return '%s/charger_test_%03d.tfrecord' % (output_dir, idx)
-    else:
-        return '%s/charger_train_%03d.tfrecord' % (output_dir, int(idx))
+    # if idx % 10 == 1:
+    #     return '%s/charger_test_%03d.tfrecord' % (output_dir, idx)
+    # else:
+    return '%s/charger_train_%03d.tfrecord' % (output_dir, int(idx))
 
 
 def main(_):
@@ -153,7 +161,7 @@ def main(_):
             except:
                 print("No annotation file. Adding negatve sample")
 
-            tf_example = dict_to_tf_example(xml_data, img_full_path, label_full_path, 'charger')
+            tf_example = dict_to_tf_example(xml_data, img_full_path, label_full_path)
             writer.write(tf_example.SerializeToString())
             idx += 1
             j += 1
