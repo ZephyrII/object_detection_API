@@ -100,7 +100,6 @@ from object_detection.anchor_generators import grid_anchor_generator
 from object_detection.builders import box_predictor_builder
 from object_detection.core import box_list
 from object_detection.core import box_list_ops
-from object_detection.core import keypoint_ops
 from object_detection.core import box_predictor
 from object_detection.core import losses
 from object_detection.core import model
@@ -916,7 +915,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
                                                                  box_predictor.MASK_PREDICTIONS], axis=1)
             if box_predictor.KEYPOINTS_PREDICTIONS in mask_and_key_predictions:
                 prediction_dict[box_predictor.KEYPOINTS_PREDICTIONS] = tf.squeeze(mask_and_key_predictions[
-                                                                 box_predictor.KEYPOINTS_PREDICTIONS], axis=1)
+                                                                                      box_predictor.KEYPOINTS_PREDICTIONS], axis=1)
         else:
             detections_dict = self._postprocess_box_classifier(
                 prediction_dict['refined_box_encodings'],
