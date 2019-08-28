@@ -131,6 +131,9 @@ def dict_to_tf_example(img_fname,
                 ymin.append(float(obj['bndbox']['ymin']) / height)
                 xmax.append(float(obj['bndbox']['xmax']) / width)
                 ymax.append(float(obj['bndbox']['ymax']) / height)
+
+                if float(obj['bndbox']['xmin']) / width>1 or float(obj['bndbox']['ymin']) / height>1 or float(obj['bndbox']['xmax']) / width>1 or float(obj['bndbox']['ymax']) / height>1:
+                    print(data['filename'])
                 classes_text.append(obj['name'].encode('utf8'))
                 classes.append(label_map_dict[obj['name']])
                 truncated.append(int(obj['truncated']))
@@ -138,13 +141,13 @@ def dict_to_tf_example(img_fname,
         example = tf.train.Example(features=tf.train.Features(feature={
             'image/height': dataset_util.int64_feature(height),
             'image/width': dataset_util.int64_feature(width),
-            'image/filename': dataset_util.bytes_feature( data['filename'].encode('utf8')),
+            'image/filename': dataset_util.bytes_feature(data['filename'].encode('utf8')),
             'image/source_id': dataset_util.bytes_feature(data['filename'].encode('utf8')),
             'image/key/sha256': dataset_util.bytes_feature(key.encode('utf8')),
             'image/encoded': dataset_util.bytes_feature(encoded_jpg),
             'image/format': dataset_util.bytes_feature('jpeg'.encode('utf8')),
-        	'image/channels': dataset_util.int64_feature(3),
-	    'image/shape': dataset_util.int64_list_feature([height, width, 3]),
+            'image/channels': dataset_util.int64_feature(3),
+            'image/shape': dataset_util.int64_list_feature([height, width, 3]),
             'image/object/bbox/xmin': dataset_util.float_list_feature(xmin),
             'image/object/bbox/xmax': dataset_util.float_list_feature(xmax),
             'image/object/bbox/ymin': dataset_util.float_list_feature(ymin),

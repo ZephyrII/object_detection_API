@@ -51,8 +51,6 @@ def dict_to_tf_example(xml_data, img_fname, label_fname):
     image = PIL.Image.open(encoded_jpg_io)
     if image.format == "PNG":
         image = image.convert('RGB')
-    # if image.format != 'JPEG':
-    #     raise ValueError('Image format not JPEG')
     key = hashlib.sha256(encoded_jpg).hexdigest()
 
     print(label_fname)
@@ -74,6 +72,8 @@ def dict_to_tf_example(xml_data, img_fname, label_fname):
     if mask_coords.shape[0] > 0:
 
         obj = xml_data.find('object')
+        distance = float(obj.find('distance').text)
+        weight = float(obj.find('weight').text)
         rel_xmin = np.min(mask_coords[:, 1])
         rel_ymin = np.min(mask_coords[:, 0])
         rel_xmax = np.max(mask_coords[:, 1])
@@ -102,7 +102,6 @@ def dict_to_tf_example(xml_data, img_fname, label_fname):
         else:
             classes.append(2)
 
-
         feature_dict['image/object/keypoint/x'] = dataset_util.float_list_feature(keypoints_x)
         feature_dict['image/object/keypoint/y'] = dataset_util.float_list_feature(keypoints_y)
         feature_dict['image/object/bbox/xmin'] = dataset_util.float_list_feature(xmin)
@@ -112,6 +111,8 @@ def dict_to_tf_example(xml_data, img_fname, label_fname):
         feature_dict['image/object/bbox/ymax'] = dataset_util.float_list_feature(ymax)
         feature_dict['image/object/class/text'] = dataset_util.bytes_list_feature(classes_text)
         feature_dict['image/object/class/label'] = dataset_util.int64_list_feature(classes)
+        feature_dict['image/object/distance'] = dataset_util.float_feature(distance)
+        feature_dict['image/object/weight'] = dataset_util.float_feature(weight)
 
         encoded_mask_png_list = []
         pil_image = PIL.Image.fromarray(label)

@@ -250,6 +250,9 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
       if fields.InputDataFields.groundtruth_instance_masks in labels:
         gt_masks_list = labels[
             fields.InputDataFields.groundtruth_instance_masks]
+      gt_distance_list = None
+      if fields.InputDataFields.groundtruth_distance in labels:
+          gt_distance_list = labels[fields.InputDataFields.groundtruth_distance]
       gt_keypoints_list = None
       if fields.InputDataFields.groundtruth_keypoints in labels:
         gt_keypoints_list = labels[fields.InputDataFields.groundtruth_keypoints]
@@ -269,6 +272,7 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
           groundtruth_classes_list=gt_classes_list,
           groundtruth_confidences_list=gt_confidences_list,
           groundtruth_masks_list=gt_masks_list,
+          groundtruth_distance_list=gt_distance_list,
           groundtruth_keypoints_list=gt_keypoints_list,
           groundtruth_weights_list=gt_weights_list,
           groundtruth_is_crowd_list=gt_is_crowd_list)

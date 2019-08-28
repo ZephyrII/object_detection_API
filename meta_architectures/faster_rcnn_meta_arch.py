@@ -109,6 +109,11 @@ from object_detection.core import target_assigner
 from object_detection.utils import ops
 from object_detection.utils import shape_utils
 
+import sys
+import math
+import numpy as np
+import cv2
+
 slim = tf.contrib.slim
 
 
@@ -257,7 +262,8 @@ class FasterRCNNMetaArch(model.DetectionModel):
                  add_summaries=True,
                  clip_anchors_to_image=False,
                  use_static_shapes=False,
-                 resize_masks=True):
+                 resize_masks=True,
+                 use_distance_in_loss=False):
         """FasterRCNNMetaArch Constructor.
 
         Args:
@@ -467,6 +473,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
         self._parallel_iterations = parallel_iterations
 
         self.clip_anchors_to_image = clip_anchors_to_image
+        self.use_distance_in_loss = use_distance_in_loss
 
         if self._number_of_stages <= 0 or self._number_of_stages > 3:
             raise ValueError('Number of stages should be a value in {1, 2, 3}.')
@@ -1487,6 +1494,8 @@ class FasterRCNNMetaArch(model.DetectionModel):
         groundtruth_boxlists = []
         for i, boxes in enumerate(self.groundtruth_lists(fields.BoxListFields.boxes)):
             tmp_bl = box_list_ops.to_absolute_coordinates(box_list.BoxList(boxes), true_image_shapes[i, 0], true_image_shapes[i, 1])
+            if self.groundtruth_has_field(fields.BoxListFields.distance) and self.use_distance_in_loss:
+                tmp_bl.add_field(fields.BoxListFields.distance, self.groundtruth_lists(fields.BoxListFields.distance)[i])
             if self.groundtruth_has_field(fields.BoxListFields.keypoints):
                 tmp_bl.add_field(fields.BoxListFields.keypoints, self.groundtruth_lists(fields.BoxListFields.keypoints)[i])
             groundtruth_boxlists.append(tmp_bl)
@@ -1731,6 +1740,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
                           tf.stack([combined_shape[0], combined_shape[1],
                                     num_classes, 4]))
 
+
     def loss(self, prediction_dict, true_image_shapes, scope=None):
         """Compute scalar loss tensors given prediction tensors.
 
@@ -1759,6 +1769,22 @@ class FasterRCNNMetaArch(model.DetectionModel):
             'second_stage_classification_loss') to scalar tensors representing
             corresponding loss values.
         """
+
+        def _calc_PnP_pose(imagePoints):
+            camera_matrix = np.array([[5008.72, 0, 2771.21],
+                                      [0, 5018.43, 1722.90],
+                                      [0, 0, 1]])
+            # print(imagePoints.shape)
+            front_points = [imagePoints[0], imagePoints[3], imagePoints[2], imagePoints[1]]
+            # object_points = np.array([(0, 0, 0), (0.64, 0, 0), (0.395, -0.255, 0), (0.245, -0.255, 0)]).astype(np.float64)
+            object_points = np.array([(0, 0, 0), (0.62, 0, 0), (0.385, -0.255, 0), (0.235, -0.255, 0)]).astype(
+                np.float64)
+            front_points = np.array(front_points, dtype=np.float32)
+            # print(front_points)
+            # cameraMatrix = np.array([[1081.50, 0, 628.59], [0, 1087.16, 506.57], [0, 0, 1]]).astype(np.float64)
+            retval, rvec, tvec = cv2.solvePnP(object_points, front_points, camera_matrix, distCoeffs=(0, 0, 0, 0, 0))
+            return math.sqrt((pow(tvec[0], 2) + pow(tvec[2], 2)))
+
         with tf.name_scope(scope, 'Loss', prediction_dict.values()):
             (groundtruth_boxlists, groundtruth_classes_with_background_list,
              groundtruth_masks_list, groundtruth_weights_list) = self._format_groundtruth_data(true_image_shapes)
@@ -1767,10 +1793,12 @@ class FasterRCNNMetaArch(model.DetectionModel):
                 prediction_dict['rpn_objectness_predictions_with_background'],
                 prediction_dict['anchors'], groundtruth_boxlists,
                 groundtruth_classes_with_background_list, groundtruth_weights_list)
+            detection_distances = None
+            detection_keypoints = None
             if 'detection_keypoints' in prediction_dict:
                 detection_keypoints = prediction_dict['detection_keypoints']
-            else:
-                detection_keypoints = None
+                if self.use_distance_in_loss:
+                    detection_distances = tf.compat.v1.py_func(_calc_PnP_pose, [detection_keypoints], tf.float32)
             if self._number_of_stages > 1:
                 loss_dict.update(
                     self._loss_box_classifier(
@@ -1779,6 +1807,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
                         prediction_dict['class_predictions_with_background'],
                         prediction_dict['proposal_boxes'],
                         detection_keypoints,
+                        detection_distances,
                         prediction_dict['num_proposals'], groundtruth_boxlists,
                         groundtruth_classes_with_background_list,
                         groundtruth_weights_list, prediction_dict['image_shape'],
@@ -1885,6 +1914,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
                              class_predictions_with_background,
                              proposal_boxes,
                              proposal_keypoints,
+                             proposal_distance,
                              num_proposals,
                              groundtruth_boxlists,
                              groundtruth_classes_with_background_list,
@@ -1961,6 +1991,8 @@ class FasterRCNNMetaArch(model.DetectionModel):
                 tmp_bl = box_list.BoxList(boxes)
                 if proposal_keypoints is not None:
                     tmp_bl.add_field(fields.BoxListFields.keypoints, proposal_keypoints[i])
+                if proposal_distance is not None:
+                    tmp_bl.add_field(fields.BoxListFields.distance, proposal_distance[i])
                 proposal_boxlists.append(tmp_bl)
 
             # proposal_boxlists = [
@@ -1999,13 +2031,13 @@ class FasterRCNNMetaArch(model.DetectionModel):
             # If using a shared box across classes use directly
 
             if proposal_keypoints is not None:
-                box_encodings_multiply = 4
+                box_encodings_multiply = 6*2
             else:
-                box_encodings_multiply = 1
+                box_encodings_multiply = 0
             if refined_box_encodings.shape[1] == 1:
                 reshaped_refined_box_encodings = tf.reshape(
                     refined_box_encodings,
-                    [batch_size, self.max_num_proposals, self._box_coder.code_size*box_encodings_multiply])
+                    [batch_size, self.max_num_proposals, self._box_coder.code_size+box_encodings_multiply])
             # For anchors with multiple labels, picks refined_location_encodings
             # for just one class to avoid over-counting for regression loss and
             # (optionally) mask loss.
@@ -2016,6 +2048,12 @@ class FasterRCNNMetaArch(model.DetectionModel):
                         one_hot_flat_cls_targets_with_background, batch_size))
 
             losses_mask = None
+            # print(batch_reg_weights)
+            # lol = tf.unique(tf.reshape(groundtruth_weights_list, [-1]))
+            # print_op = tf.print(lol, output_stream=sys.stdout)
+            # with tf.control_dependencies([print_op]):
+            #     batch_reg_weights = batch_reg_weights*1.0
+
             if self.groundtruth_has_field(fields.InputDataFields.is_annotated):
                 losses_mask = tf.stack(self.groundtruth_lists(
                     fields.InputDataFields.is_annotated))

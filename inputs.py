@@ -242,6 +242,11 @@ def pad_input_data_to_static_shapes(tensor_dict, max_num_boxes, num_classes,
     padding_shapes[fields.InputDataFields.original_image] = [
         height, width, num_image_channels + num_additional_channels
     ]
+  if fields.InputDataFields.groundtruth_distance in tensor_dict:
+    tensor_shape = (
+        tensor_dict[fields.InputDataFields.groundtruth_distance].shape)
+    # padding_shape = [max_num_boxes, tensor_shape[0].value]
+    padding_shapes[fields.InputDataFields.groundtruth_distance] = []
   if fields.InputDataFields.groundtruth_keypoints in tensor_dict:
     tensor_shape = (
         tensor_dict[fields.InputDataFields.groundtruth_keypoints].shape)
