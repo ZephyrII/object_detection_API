@@ -40,7 +40,7 @@ class MaskRCNNKeypointHead(head.Head):
     """
 
     def __init__(self,
-                 num_keypoints=6,
+                 num_keypoints,
                  conv_hyperparams_fn=None,
                  keypoint_heatmap_height=56,
                  keypoint_heatmap_width=56,
@@ -102,20 +102,19 @@ class MaskRCNNKeypointHead(head.Head):
                 net = slim.conv2d(
                     net,
                     self._keypoint_prediction_conv_depth, [3, 3],
-                    scope='conv_%d' % (i + 1))
+                    scope='KeypointsPredictor_conv_%d' % (i + 1))
 
             flattened = slim.flatten(net)
 
             res = slim.fully_connected(
                 flattened,
-                6 * 2,
+                self._num_keypoints * 2,
                 activation_fn=None,
                 scope='KeypointsPredictor')
-            res = tf.reshape(res, [-1, 6, 2])
+            res = tf.reshape(res, [-1, self._num_keypoints, 2])
             return tf.expand_dims(res, axis=1, name='KeypointPredictor')
 
-    def _build_arg_scope_with_hyperparams(self,
-                                          op_type=hyperparams_pb2.Hyperparams.FC):
+    def _build_arg_scope_with_hyperparams(self, op_type=hyperparams_pb2.Hyperparams.FC):
         hyperparams = hyperparams_pb2.Hyperparams()
         hyperparams_text_proto = """
       activation: NONE

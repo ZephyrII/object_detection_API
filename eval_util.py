@@ -831,8 +831,6 @@ def result_dict_for_batched_example(images,
 
     output_dict[input_data_fields.num_groundtruth_boxes] = max_gt_boxes
 
-    print()
-
   return output_dict
 
 

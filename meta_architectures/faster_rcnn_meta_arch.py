@@ -262,7 +262,8 @@ class FasterRCNNMetaArch(model.DetectionModel):
                  clip_anchors_to_image=False,
                  use_static_shapes=False,
                  resize_masks=True,
-                 use_distance_in_loss=False):
+                 use_distance_in_loss=False,
+                 num_keypoints=6):  #set number of keypoints
         """FasterRCNNMetaArch Constructor.
 
         Args:
@@ -473,6 +474,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
 
         self.clip_anchors_to_image = clip_anchors_to_image
         self.use_distance_in_loss = use_distance_in_loss
+        self.num_keypoints = num_keypoints
 
         if self._number_of_stages <= 0 or self._number_of_stages > 3:
             raise ValueError('Number of stages should be a value in {1, 2, 3}.')
@@ -707,7 +709,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
                 prediction_dict, true_image_shapes)
             if box_predictor.KEYPOINTS_PREDICTIONS in prediction_dict:
                 prediction_dict['refined_box_encodings'] = tf.concat([prediction_dict['refined_box_encodings'],
-                                                            tf.reshape(prediction_dict[box_predictor.KEYPOINTS_PREDICTIONS], [-1, 1, 12])],2)
+                                                           tf.reshape(prediction_dict[box_predictor.KEYPOINTS_PREDICTIONS], [-1, 1, self.num_keypoints*2])],2)
                 prediction_dict['detection_keypoints'] = prediction_dict[box_predictor.KEYPOINTS_PREDICTIONS] # tf.expand_dims(prediction_dict[box_predictor.KEYPOINTS_PREDICTIONS], 0)
             # if self._is_training:
             #     x = tf.reshape(prediction_dict[box_predictor.KEYPOINTS_PREDICTIONS],
@@ -1358,7 +1360,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
             proposal_boxes = tf.stop_gradient(proposal_boxes)
             if not self._hard_example_miner:
                 (groundtruth_boxlists, groundtruth_classes_with_background_list, _,
-                 groundtruth_weights_list) = self._format_groundtruth_data(true_image_shapes)
+                 groundtruth_weights_list, offset) = self._format_groundtruth_data(true_image_shapes)
                 (proposal_boxes, proposal_scores,
                  num_proposals) = self._sample_box_classifier_batch(
                     proposal_boxes, proposal_scores, num_proposals,
@@ -1494,7 +1496,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
         for i, boxes in enumerate(self.groundtruth_lists(fields.BoxListFields.boxes)):
             tmp_bl = box_list_ops.to_absolute_coordinates(box_list.BoxList(boxes), true_image_shapes[i, 0], true_image_shapes[i, 1])
             if self.groundtruth_has_field(fields.BoxListFields.distance) and self.use_distance_in_loss:
-                tmp_bl.add_field(fields.BoxListFields.distance, self.groundtruth_lists(fields.BoxListFields.distance)[i])
+                tmp_bl.add_field(fields.BoxListFields.distance, tf.abs(self.groundtruth_lists(fields.BoxListFields.distance)[i]))
             if self.groundtruth_has_field(fields.BoxListFields.keypoints):
                 tmp_bl.add_field(fields.BoxListFields.keypoints, self.groundtruth_lists(fields.BoxListFields.keypoints)[i])
             groundtruth_boxlists.append(tmp_bl)
@@ -1537,8 +1539,12 @@ class FasterRCNNMetaArch(model.DetectionModel):
                 groundtruth_weights = tf.ones(num_gt)
                 groundtruth_weights_list.append(groundtruth_weights)
 
+        # offset = None
+        # if self.groundtruth_has_field(fields.InputDataFields.image_offset_x) and self.groundtruth_has_field(fields.InputDataFields.image_offset_y):
+        offset = self.groundtruth_lists(fields.InputDataFields.image_offset)
+
         return (groundtruth_boxlists, groundtruth_classes_with_background_list,
-                groundtruth_masks_list, groundtruth_weights_list)
+                groundtruth_masks_list, groundtruth_weights_list, offset)
 
     def _sample_box_classifier_minibatch_single_image(
             self, proposal_boxlist, num_valid_proposals, groundtruth_boxlist,
@@ -1769,24 +1775,51 @@ class FasterRCNNMetaArch(model.DetectionModel):
             corresponding loss values.
         """
 
-        def _calc_PnP_pose(imagePoints):
-            camera_matrix = np.array([[5008.72, 0, 2771.21],
-                                      [0, 5018.43, 1722.90],
+        def _calc_PnP_pose(imagePoints, box_encodings, offset):
+            box_encod = box_encodings[0]
+            slice_size = (720, 960)
+            frame_shape = (3648, 5472)
+            scale = (frame_shape[0]/slice_size[0], frame_shape[1]/slice_size[1])
+            camera_matrix = np.array([[5008.72/scale[1], 0, 2771.21/scale[1]],
+                                      [0, 5018.43/scale[0], 1722.90/scale[0]],
                                       [0, 0, 1]])
-            # print(imagePoints.shape)
-            front_points = [imagePoints[0], imagePoints[3], imagePoints[2], imagePoints[1]]
-            # object_points = np.array([(0, 0, 0), (0.64, 0, 0), (0.395, -0.255, 0), (0.245, -0.255, 0)]).astype(np.float64)
-            object_points = np.array([(0, 0, 0), (0.62, 0, 0), (0.385, -0.255, 0), (0.235, -0.255, 0)]).astype(
-                np.float64)
+            abs_xmin = int(box_encod[1] * slice_size[1] + offset[0])
+            abs_ymin = int(box_encod[0] * slice_size[0] + offset[1])
+            abs_xmax = np.min((int(box_encod[3] * slice_size[1] + offset[0]), frame_shape[1]))
+            abs_ymax = np.min((int(box_encod[2] * slice_size[0] + offset[1]), frame_shape[0]))
+            absolute_kp = []
+            for kp in imagePoints:
+                absolute_kp.append((kp[1] * (abs_xmax - abs_xmin) + abs_xmin, kp[0] * (abs_ymax - abs_ymin) + abs_ymin))
+            front_points = imagePoints[:4]
+            object_points = np.array([(-0.32, 0, -0.65), (-0.075, -0.255, -0.65), (0.075, -0.255, -0.65), (0.32, 0, -0.65)]).astype(np.float64)
             front_points = np.array(front_points, dtype=np.float32)
-            # print(front_points)
-            # cameraMatrix = np.array([[1081.50, 0, 628.59], [0, 1087.16, 506.57], [0, 0, 1]]).astype(np.float64)
-            retval, rvec, tvec = cv2.solvePnP(object_points, front_points, camera_matrix, distCoeffs=(0, 0, 0, 0, 0))
+            retval, rvec, tvec = cv2.solvePnP(object_points, front_points, camera_matrix, distCoeffs=(-0.10112, 0.07739, 0.00447, -0.00070, 0.00000))
             return math.sqrt((pow(tvec[0], 2) + pow(tvec[2], 2)))
+
+        def _calc_magic_dist(imagePoints, box_encodings):
+            box_encod = box_encodings[0]
+            slice_size = (720, 960)
+            frame_shape = (3648, 5472)
+            abs_xmin = int(box_encod[1] * slice_size[1])
+            abs_ymin = int(box_encod[0] * slice_size[0])
+            abs_xmax = int(box_encod[3] * slice_size[1])
+            abs_ymax = int(box_encod[2] * slice_size[0])
+            absolute_kp = []
+            for kp in imagePoints:
+                absolute_kp.append(
+                    (kp[1] * (abs_xmax - abs_xmin) + abs_xmin, kp[0] * (abs_ymax - abs_ymin) + abs_ymin))
+            scale = (frame_shape[0]/slice_size[0], frame_shape[1]/slice_size[1])
+            camera_matrix = np.array([[5008.72/scale[1], 0, 2771.21/scale[1]],
+                                      [0, 5018.43/scale[0], 1722.90/scale[0]],
+                                      [0, 0, 1]])
+            width = np.abs(absolute_kp[3][0]-absolute_kp[0][0])
+            est_z = (0.77 * camera_matrix[0, 0]) / width
+            est_x = est_z * (absolute_kp[0][0] + (width / 2) - camera_matrix[0, 2]) / camera_matrix[0, 0]
+            return math.sqrt((pow(est_z, 2) + pow(est_x, 2)))
 
         with tf.name_scope(scope, 'Loss', prediction_dict.values()):
             (groundtruth_boxlists, groundtruth_classes_with_background_list,
-             groundtruth_masks_list, groundtruth_weights_list) = self._format_groundtruth_data(true_image_shapes)
+             groundtruth_masks_list, groundtruth_weights_list, offset) = self._format_groundtruth_data(true_image_shapes)
             loss_dict = self._loss_rpn(
                 prediction_dict['rpn_box_encodings'],
                 prediction_dict['rpn_objectness_predictions_with_background'],
@@ -1797,7 +1830,16 @@ class FasterRCNNMetaArch(model.DetectionModel):
             if 'detection_keypoints' in prediction_dict:
                 detection_keypoints = prediction_dict['detection_keypoints']
                 if self.use_distance_in_loss:
-                    detection_distances = tf.compat.v1.py_func(_calc_PnP_pose, [detection_keypoints], tf.float32)
+                    # Get absolute box coordinates
+                    rpn_box_encodings_batch = tf.expand_dims(prediction_dict['rpn_box_encodings'], axis=2)
+                    rpn_encodings_shape = shape_utils.combined_static_and_dynamic_shape(
+                        rpn_box_encodings_batch)
+                    tiled_anchor_boxes = tf.tile(
+                        tf.expand_dims(prediction_dict['anchors'], 0), [rpn_encodings_shape[0], 1, 1])
+                    proposal_boxes = self._batch_decode_boxes(rpn_box_encodings_batch,
+                                                              tiled_anchor_boxes)[0]
+                    detection_distances = tf.py_function(_calc_PnP_pose, [tf.identity(detection_keypoints),
+                                                                          tf.identity(proposal_boxes), offset], tf.float32)
             if self._number_of_stages > 1:
                 loss_dict.update(
                     self._loss_box_classifier(
@@ -1811,10 +1853,8 @@ class FasterRCNNMetaArch(model.DetectionModel):
                         groundtruth_classes_with_background_list,
                         groundtruth_weights_list, prediction_dict['image_shape'],
                         prediction_dict.get('mask_predictions'), groundtruth_masks_list,
-                        prediction_dict.get(
-                            fields.DetectionResultFields.detection_boxes),
-                        prediction_dict.get(
-                            fields.DetectionResultFields.num_detections)))
+                        prediction_dict.get(fields.DetectionResultFields.detection_boxes),
+                        prediction_dict.get(fields.DetectionResultFields.num_detections)))
         return loss_dict
 
     def _loss_rpn(self, rpn_box_encodings,
@@ -2030,7 +2070,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
             # If using a shared box across classes use directly
 
             if proposal_keypoints is not None:
-                box_encodings_multiply = 6*2
+                box_encodings_multiply = self.num_keypoints*2
             else:
                 box_encodings_multiply = 0
             if refined_box_encodings.shape[1] == 1:
@@ -2047,11 +2087,6 @@ class FasterRCNNMetaArch(model.DetectionModel):
                         one_hot_flat_cls_targets_with_background, batch_size))
 
             losses_mask = None
-            # print(batch_reg_weights)
-            # lol = tf.unique(tf.reshape(groundtruth_weights_list, [-1]))
-            # print_op = tf.print(lol, output_stream=sys.stdout)
-            # with tf.control_dependencies([print_op]):
-            #     batch_reg_weights = batch_reg_weights*1.0
 
             if self.groundtruth_has_field(fields.InputDataFields.is_annotated):
                 losses_mask = tf.stack(self.groundtruth_lists(
@@ -2108,7 +2143,6 @@ class FasterRCNNMetaArch(model.DetectionModel):
 
             loss_dict = {localization_loss.op.name: localization_loss,
                          classification_loss.op.name: classification_loss}
-                         # 'kp_loss': second_stage_kp_loss}
             second_stage_mask_loss = None
             if prediction_masks is not None:
                 if groundtruth_masks_list is None:
@@ -2383,6 +2417,11 @@ class FasterRCNNMetaArch(model.DetectionModel):
                 self.second_stage_feature_extractor_scope)
 
         variables_to_restore = tf.global_variables()
+        # variables_to_restore = []
+        # all_variables = tf.global_variables()
+        # for var in all_variables:
+        #     if "KeypointsPredictor" not in var.name:
+        #         variables_to_restore.append(var)
         variables_to_restore.append(slim.get_or_create_global_step())
         # Only load feature extractor variables to be consistent with loading from
         # a classification checkpoint.

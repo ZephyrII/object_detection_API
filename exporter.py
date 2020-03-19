@@ -453,8 +453,7 @@ def export_inference_graph(input_type,
       tensors to include in the frozen graph.
     write_inference_graph: If true, writes inference graph to disk.
   """
-  detection_model = model_builder.build(pipeline_config.model,
-                                        is_training=False)
+  detection_model = model_builder.build(pipeline_config.model, is_training=False)
   graph_rewriter_fn = None
   if pipeline_config.HasField('graph_rewriter'):
     graph_rewriter_config = pipeline_config.graph_rewriter

@@ -70,7 +70,7 @@ def build(input_reader_config):
         load_instance_masks=input_reader_config.load_instance_masks,
         instance_mask_type=input_reader_config.mask_type,
         label_map_proto_file=label_map_proto_file,
-        num_keypoints=6)
+        num_keypoints=input_reader_config.num_keypoints)
     return decoder.decode(string_tensor)
 
   raise ValueError('Unsupported input_reader_config.')

@@ -161,6 +161,7 @@ def unstack_batch(tensor_dict, unpad_groundtruth_tensors=True):
         fields.InputDataFields.groundtruth_instance_masks,
         fields.InputDataFields.groundtruth_classes,
         fields.InputDataFields.groundtruth_boxes,
+        fields.InputDataFields.groundtruth_distance,
         fields.InputDataFields.groundtruth_keypoints,
         fields.InputDataFields.groundtruth_group_of,
         fields.InputDataFields.groundtruth_difficult,
@@ -229,6 +230,7 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
         is_training=is_training, add_summaries=(not use_tpu))
     scaffold_fn = None
 
+
     if mode == tf.estimator.ModeKeys.TRAIN:
       labels = unstack_batch(
           labels,
@@ -253,6 +255,9 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
       gt_distance_list = None
       if fields.InputDataFields.groundtruth_distance in labels:
           gt_distance_list = labels[fields.InputDataFields.groundtruth_distance]
+      gt_offset_list = None
+      if fields.InputDataFields.image_offset_x in labels and fields.InputDataFields.image_offset_y in labels:
+          gt_offset_list = (labels[fields.InputDataFields.image_offset_x], labels[fields.InputDataFields.image_offset_y])
       gt_keypoints_list = None
       if fields.InputDataFields.groundtruth_keypoints in labels:
         gt_keypoints_list = labels[fields.InputDataFields.groundtruth_keypoints]
@@ -273,6 +278,7 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False):
           groundtruth_confidences_list=gt_confidences_list,
           groundtruth_masks_list=gt_masks_list,
           groundtruth_distance_list=gt_distance_list,
+          groundtruth_offset_list=gt_offset_list,
           groundtruth_keypoints_list=gt_keypoints_list,
           groundtruth_weights_list=gt_weights_list,
           groundtruth_is_crowd_list=gt_is_crowd_list)

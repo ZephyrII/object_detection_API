@@ -243,10 +243,15 @@ def pad_input_data_to_static_shapes(tensor_dict, max_num_boxes, num_classes,
         height, width, num_image_channels + num_additional_channels
     ]
   if fields.InputDataFields.groundtruth_distance in tensor_dict:
-    tensor_shape = (
-        tensor_dict[fields.InputDataFields.groundtruth_distance].shape)
-    # padding_shape = [max_num_boxes, tensor_shape[0].value]
-    padding_shapes[fields.InputDataFields.groundtruth_distance] = []
+      tensor_shape = (
+          tensor_dict[fields.InputDataFields.groundtruth_distance].shape)
+      padding_shape = [max_num_boxes, tensor_shape[1].value]
+      padding_shapes[fields.InputDataFields.groundtruth_distance] = padding_shape
+    # padding_shapes[fields.InputDataFields.groundtruth_distance] = []
+  if fields.InputDataFields.image_offset_x in tensor_dict:
+    padding_shapes[fields.InputDataFields.image_offset_x] = []
+  if fields.InputDataFields.image_offset_y in tensor_dict:
+    padding_shapes[fields.InputDataFields.image_offset_y] = []
   if fields.InputDataFields.groundtruth_keypoints in tensor_dict:
     tensor_shape = (
         tensor_dict[fields.InputDataFields.groundtruth_keypoints].shape)
@@ -326,6 +331,9 @@ def _get_labels_dict(input_dict):
   optional_label_keys = [
       fields.InputDataFields.groundtruth_confidences,
       fields.InputDataFields.groundtruth_keypoints,
+      fields.InputDataFields.groundtruth_distance,
+      fields.InputDataFields.image_offset_x,
+      fields.InputDataFields.image_offset_y,
       fields.InputDataFields.groundtruth_instance_masks,
       fields.InputDataFields.groundtruth_area,
       fields.InputDataFields.groundtruth_is_crowd,

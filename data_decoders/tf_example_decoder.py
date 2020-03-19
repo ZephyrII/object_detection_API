@@ -207,6 +207,10 @@ class TfExampleDecoder(data_decoder.DataDecoder):
             tf.VarLenFeature(tf.float32),
         'image/object/distance':
             tf.FixedLenFeature((), tf.float32, default_value=1.0),
+        'image/object/offset/x':
+            tf.FixedLenFeature((), tf.int64, default_value=1),
+        'image/object/offset/y':
+            tf.FixedLenFeature((), tf.int64, default_value=1),
     }
     # We are checking `dct_method` instead of passing it directly in order to
     # ensure TF version 1.6 compatibility.
@@ -253,8 +257,12 @@ class TfExampleDecoder(data_decoder.DataDecoder):
             slim_example_decoder.Tensor('image/object/group_of')),
         fields.InputDataFields.groundtruth_weights: (
             slim_example_decoder.Tensor('image/object/weight')),
-        fields.InputDataFields.groundtruth_distance: (
-            slim_example_decoder.Tensor('image/object/distance')),
+        # fields.InputDataFields.groundtruth_distance: (
+        #     slim_example_decoder.Tensor('image/object/distance')),
+        fields.InputDataFields.image_offset_x: (
+            slim_example_decoder.Tensor('image/object/offset/x')),
+        fields.InputDataFields.image_offset_y: (
+            slim_example_decoder.Tensor('image/object/offset/y')),
     }
     if num_additional_channels > 0:
       self.keys_to_features[
@@ -263,7 +271,10 @@ class TfExampleDecoder(data_decoder.DataDecoder):
       self.items_to_handlers[
           fields.InputDataFields.
           image_additional_channels] = additional_channel_image
-    # self.keys_to_features[
+    self.items_to_handlers[fields.InputDataFields.groundtruth_distance] = (
+        slim_example_decoder.ItemHandlerCallback(
+            ['image/object/distance'],
+            self._reshape_distance))
     self._num_keypoints = num_keypoints
     if num_keypoints > 0:
       self.keys_to_features['image/object/keypoint/x'] = (
@@ -416,6 +427,10 @@ class TfExampleDecoder(data_decoder.DataDecoder):
     keypoints = tf.concat([y, x], 1)
     keypoints = tf.reshape(keypoints, [-1, self._num_keypoints, 2])
     return keypoints
+
+  def _reshape_distance(self, keys_to_tensors):
+    distance = tf.ones((100, 1), tf.float32)*keys_to_tensors['image/object/distance']
+    return distance
 
   def _reshape_instance_masks(self, keys_to_tensors):
     """Reshape instance segmentation masks.

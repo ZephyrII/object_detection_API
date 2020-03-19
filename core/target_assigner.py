@@ -243,6 +243,15 @@ class TargetAssigner(object):
           ignored_value=tf.zeros(groundtruth_keypoints.get_shape()[1:]))
       matched_gt_boxlist.add_field(fields.BoxListFields.keypoints,
                                    matched_keypoints)
+    if groundtruth_boxes.has_field(fields.BoxListFields.distance):
+      groundtruth_distances = groundtruth_boxes.get_field(
+          fields.BoxListFields.distance)
+      matched_distances = match.gather_based_on_match(
+          groundtruth_distances,
+          unmatched_value=tf.zeros(1),
+          ignored_value=tf.zeros(1))
+      matched_gt_boxlist.add_field(fields.BoxListFields.distance,
+                                   matched_distances)
     matched_reg_targets = self._box_coder.encode(matched_gt_boxlist, anchors)
     match_results_shape = shape_utils.combined_static_and_dynamic_shape(
         match.match_results)
@@ -357,7 +366,7 @@ class TargetAssigner(object):
 # TODO(rathodv): This method pulls in all the implementation dependencies into
 # core. Therefore its best to have this factory method outside of core.
 def create_target_assigner(reference, stage=None,
-                           negative_class_weight=1.0, use_matmul_gather=False):
+                           negative_class_weight=1.0, use_matmul_gather=False, num_keypoints=None):
   """Factory function for creating standard target assigners.
 
   Args:
@@ -403,7 +412,7 @@ def create_target_assigner(reference, stage=None,
     matcher = argmax_matcher.ArgMaxMatcher(matched_threshold=0.5,
                                            negatives_lower_than_unmatched=True,
                                            use_matmul_gather=use_matmul_gather)
-    box_coder = keypoint_box_coder.KeypointBoxCoder(6,
+    box_coder = keypoint_box_coder.KeypointBoxCoder(num_keypoints,
         scale_factors=[10.0, 10.0, 5.0, 5.0])
   elif reference == 'FastRCNN':
     similarity_calc = sim_calc.IouSimilarity()

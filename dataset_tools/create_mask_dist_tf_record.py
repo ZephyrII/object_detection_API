@@ -76,7 +76,7 @@ def dict_to_tf_example(xml_data, img_fname, label_fname):
         # feature_dict['image/object/offset/x'] = dataset_util.int64_feature(int(off_x))
         # feature_dict['image/object/offset/y'] = dataset_util.int64_feature(int(off_y))
         obj = xml_data.find('object')
-        # distance = float(obj.find('distance').text)
+        distance = float(obj.find('distance').text)
         # weight = float(obj.find('weight').text)
         rel_xmin = np.min(mask_coords[:, 1])
         rel_ymin = np.min(mask_coords[:, 0])
@@ -115,7 +115,7 @@ def dict_to_tf_example(xml_data, img_fname, label_fname):
         feature_dict['image/object/bbox/ymax'] = dataset_util.float_list_feature(ymax)
         feature_dict['image/object/class/text'] = dataset_util.bytes_list_feature(classes_text)
         feature_dict['image/object/class/label'] = dataset_util.int64_list_feature(classes)
-        # feature_dict['image/object/distance'] = dataset_util.float_feature(distance)
+        feature_dict['image/object/distance'] = dataset_util.float_feature(distance)
         # feature_dict['image/object/weight'] = dataset_util.float_feature(weight)
 
         encoded_mask_png_list = []

@@ -241,6 +241,7 @@ class DetectionModel(object):
                           groundtruth_masks_list=None,
                           groundtruth_keypoints_list=None,
                           groundtruth_distance_list=None,
+                          groundtruth_offset_list=None,
                           groundtruth_weights_list=None,
                           groundtruth_confidences_list=None,
                           groundtruth_is_crowd_list=None,
@@ -290,6 +291,9 @@ class DetectionModel(object):
     if groundtruth_distance_list:
       self._groundtruth_lists[
           fields.BoxListFields.distance] = groundtruth_distance_list
+    if groundtruth_offset_list:
+      self._groundtruth_lists[
+          fields.InputDataFields.image_offset] = groundtruth_offset_list
     if groundtruth_keypoints_list:
       self._groundtruth_lists[
           fields.BoxListFields.keypoints] = groundtruth_keypoints_list

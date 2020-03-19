@@ -16,7 +16,7 @@
 """Keypoint operations.
 
 Keypoints are represented as tensors of shape [num_instances, num_keypoints, 2],
-where the last dimension holds rank 2 tensors of the form [y, x] representing
+where the last dimension holds rank 2 tensors of the formopeng [y, x] representing
 the coordinates of the keypoint.
 """
 import numpy as np
@@ -242,7 +242,7 @@ def flip_horizontal(keypoints, flip_point, flip_permutation, scope=None):
   """
   with tf.name_scope(scope, 'FlipHorizontal'):
     keypoints = tf.transpose(keypoints, [1, 0, 2])
-    keypoints = tf.gather(keypoints, flip_permutation)
+    keypoints = tf.gather(keypoints, [3,2,1,0,7,6,5,4]) #flip_permutation) # edited
     v, u = tf.split(value=keypoints, num_or_size_splits=2, axis=2)
     u = flip_point * 2.0 - u
     new_keypoints = tf.concat([v, u], 2)

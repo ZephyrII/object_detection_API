@@ -164,7 +164,7 @@ def main(_):
     data_dir = FLAGS.data_dir
     label_map_dict = label_map_util.get_label_map_dict(FLAGS.label_map_path)
 
-    print(label_map_dict)
+    # print(label_map_dict)
 
     im_path = os.path.join(data_dir, "images")
     labels_path = os.path.join(data_dir, "labels")
